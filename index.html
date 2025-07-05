@@ -1304,6 +1304,22 @@
             }
         }
 
+        // 안전한 명령어 전송 (에러 무시)
+        async function sendCommandSafe(command, timeoutMs = 2000) {
+            try {
+                logCommand(`📤 안전 명령: ${command}`);
+                await writer.write(new TextEncoder().encode(command + '\r'));
+                
+                const response = await readWithQuickTimeout(timeoutMs);
+                logCommand(`📥 안전 응답: "${response}"`);
+                
+                return response;
+            } catch (error) {
+                logCommand(`⚠️ 안전 명령 "${command}" 오류: ${error.message} (무시됨)`);
+                return null;
+            }
+        }
+
         // 명령어 전송
         async function sendCommand(command) {
             if (!isConnected) {
@@ -1396,26 +1412,26 @@
                 logCommand('하드웨어 스펙트럼 측정 시작...');
 
                 // 스위프 설정
-                await sendCommandSafe(`sweep start ${Math.floor(startFreq)}`);
+                await safeCommand(`sweep start ${Math.floor(startFreq)}`);
                 await sleep(200);
-                await sendCommandSafe(`sweep stop ${Math.floor(stopFreq)}`);
+                await safeCommand(`sweep stop ${Math.floor(stopFreq)}`);
                 await sleep(200);
 
                 // 스캔 포인트 설정 (tinySA는 자동으로 조정될 수 있음)
                 logCommand(`주파수 범위: ${startFreq/1e6} - ${stopFreq/1e6} MHz`);
 
                 // 스캔 실행 및 완료 대기
-                await sendCommandSafe('resume');
+                await safeCommand('resume');
                 await sleep(1000); // 스캔 완료 대기
 
                 // 주파수 정보 가져오기
-                const freqResponse = await sendCommandSafe('frequencies');
+                const freqResponse = await safeCommand('frequencies');
                 if (!freqResponse) {
                     throw new Error('주파수 데이터를 가져올 수 없습니다');
                 }
 
                 // 스펙트럼 데이터 가져오기 (Array 0 = 신호 강도)
-                const dataResponse = await sendCommandSafe('data 0');
+                const dataResponse = await safeCommand('data 0');
                 if (!dataResponse) {
                     throw new Error('스펙트럼 데이터를 가져올 수 없습니다');
                 }
@@ -1751,14 +1767,14 @@
 
                 if (isConnected && document.getElementById('deviceMode').value === 'hardware') {
                     // 실제 하드웨어 설정
-                    await sendCommand(`level ${outputLevel}`);
-                    await sendCommand(`output ${outputMode}`);
-                    await sendCommand(`mode ${inputMode} input`);
+                    await safeCommand(`level ${outputLevel}`);
+                    await safeCommand(`output ${outputMode}`);
+                    await safeCommand(`mode ${inputMode} input`);
                     
                     if (rbw === 'auto') {
-                        await sendCommand('rbw auto');
+                        await safeCommand('rbw auto');
                     } else {
-                        await sendCommand(`rbw ${rbw}`);
+                        await safeCommand(`rbw ${rbw}`);
                     }
                     
                     logCommand('하드웨어 설정 적용 완료');
@@ -1779,11 +1795,15 @@
             try {
                 if (isConnected && document.getElementById('deviceMode').value === 'hardware') {
                     // 실제 하드웨어에서 온도 읽기
-                    const response = await sendCommand('k'); // 온도 명령어
-                    const temp = parseFloat(response);
-                    if (!isNaN(temp)) {
-                        document.getElementById('temperature').value = temp.toFixed(1);
-                        logCommand(`하드웨어 온도: ${temp.toFixed(1)}°C`);
+                    const response = await safeCommand('k'); // 온도 명령어
+                    if (response) {
+                        const temp = parseFloat(response);
+                        if (!isNaN(temp)) {
+                            document.getElementById('temperature').value = temp.toFixed(1);
+                            logCommand(`하드웨어 온도: ${temp.toFixed(1)}°C`);
+                        } else {
+                            logCommand(`온도 파싱 오류: "${response}"`);
+                        }
                     }
                 } else {
                     // 시뮬레이션 온도
