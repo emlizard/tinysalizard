@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TinySA 스펙트럼 분석기 시뮬레이터</title>
+    <title>TinySA Spectrum Analyzer & Signal Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
@@ -44,6 +44,41 @@
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .mode-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            min-width: 200px;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(45deg, #4a6cf7, #667eea);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 108, 247, 0.4);
+        }
+
+        .mode-btn.inactive {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .mode-btn.inactive:hover {
+            background: #e0e0e0;
+        }
+
         .controls-grid {
             display: grid;
             grid-template-columns: 1fr 2fr;
@@ -56,6 +91,14 @@
             border-radius: 15px;
             padding: 25px;
             border: 2px solid #e1e8ff;
+        }
+
+        .mode-section {
+            display: none;
+        }
+
+        .mode-section.active {
+            display: block;
         }
 
         .control-group {
@@ -121,6 +164,16 @@
         .btn-secondary:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #ed8936, #dd6b20);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(237, 137, 54, 0.4);
         }
 
         .chart-container {
@@ -244,6 +297,15 @@
             box-shadow: none !important;
         }
 
+        .signal-gen-panel {
+            background: #fff5f5;
+            border: 2px solid #fed7d7;
+        }
+
+        .signal-gen-panel h3 {
+            color: #c53030;
+        }
+
         @media (max-width: 768px) {
             .controls-grid {
                 grid-template-columns: 1fr;
@@ -256,294 +318,305 @@
             .button-group {
                 grid-template-columns: 1fr;
             }
+
+            .mode-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔬 TinySA 스펙트럼 분석기</h1>
-            <p>RF 신호 분석 및 시뮬레이션 도구</p>
+            <h1>🔬 TinySA Spectrum Analyzer & Signal Generator</h1>
+            <p>RF Signal Analysis and Generation Tool</p>
+        </div>
+
+        <!-- Mode Selection -->
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('analyzer')" id="analyzerModeBtn">
+                📊 Spectrum Analyzer
+            </button>
+            <button class="mode-btn inactive" onclick="switchMode('generator')" id="generatorModeBtn">
+                📡 Signal Generator
+            </button>
         </div>
 
         <div class="controls-grid">
             <div class="control-panel">
-                <h2>🔌 장비 연결</h2>
+                <h2>🔌 Device Connection</h2>
                 
                 <div class="control-group">
-                    <label>연결 상태</label>
-                    <div id="connectionStatus" class="status-indicator disconnected">연결 안됨</div>
+                    <label>Connection Status</label>
+                    <div id="connectionStatus" class="status-indicator disconnected">Disconnected</div>
                 </div>
 
                 <div class="control-group">
-                    <label>장비 모드</label>
+                    <label>Device Mode</label>
                     <select id="deviceMode">
-                        <option value="simulation">시뮬레이션 모드</option>
-                        <option value="hardware">실제 장비 연결</option>
+                        <option value="simulation">Simulation Mode</option>
+                        <option value="hardware">Hardware Connection</option>
                     </select>
                 </div>
 
                 <div class="control-group">
-                    <label>보드레이트 (bps)</label>
+                    <label>Baud Rate (bps)</label>
                     <select id="baudRate">
-                        <option value="auto">자동 감지 (권장)</option>
-                        <option value="9600" selected>9600 (시스템 기본)</option>
+                        <option value="auto">Auto Detect (Recommended)</option>
+                        <option value="9600" selected>9600 (System Default)</option>
                         <option value="19200">19200</option>
                         <option value="38400">38400</option>
                         <option value="57600">57600</option>
-                        <option value="115200">115200 (tinySA 표준)</option>
+                        <option value="115200">115200 (tinySA Standard)</option>
                         <option value="230400">230400</option>
                     </select>
                 </div>
 
                 <div class="button-group">
-                    <button class="btn btn-primary" id="connectBtn" onclick="connectDevice()">🔌 장비 연결</button>
-                    <button class="btn btn-secondary" id="disconnectBtn" onclick="disconnectDevice()" disabled>❌ 연결 해제</button>
+                    <button class="btn btn-primary" id="connectBtn" onclick="connectDevice()">🔌 Connect</button>
+                    <button class="btn btn-secondary" id="disconnectBtn" onclick="disconnectDevice()" disabled>❌ Disconnect</button>
                 </div>
 
                 <div class="button-group" style="margin-top: 10px;">
-                    <button class="btn btn-secondary" onclick="diagnoseConnection()" id="diagnoseBtn" disabled>🔍 연결 진단</button>
-                    <button class="btn btn-secondary" onclick="clearLog()">🗑️ 로그 지우기</button>
-                </div>
-
-                <div class="button-group" style="margin-top: 10px;">
-                    <button class="btn btn-primary" onclick="quickReconnect()" id="reconnectBtn" disabled>🔄 빠른 재연결</button>
-                    <button class="btn btn-secondary" onclick="resetConnection()">🔧 연결 리셋</button>
+                    <button class="btn btn-secondary" onclick="diagnoseConnection()" id="diagnoseBtn" disabled>🔍 Diagnose</button>
+                    <button class="btn btn-secondary" onclick="clearLog()">🗑️ Clear Log</button>
                 </div>
 
                 <hr style="margin: 20px 0; border: 1px solid #e1e8ff;">
 
-                <h2>📡 주파수 설정</h2>
-                
-                <div class="control-group">
-                    <label>시작 주파수</label>
-                    <div class="input-group">
-                        <input type="number" id="startFreq" value="1" step="0.1">
-                        <span class="unit-label">MHz</span>
+                <!-- Spectrum Analyzer Controls -->
+                <div id="analyzerControls" class="mode-section active">
+                    <h2>📡 Frequency Settings</h2>
+                    
+                    <div class="control-group">
+                        <label>Start Frequency</label>
+                        <div class="input-group">
+                            <input type="number" id="startFreq" value="1" step="0.1">
+                            <span class="unit-label">MHz</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Stop Frequency</label>
+                        <div class="input-group">
+                            <input type="number" id="stopFreq" value="900" step="0.1">
+                            <span class="unit-label">MHz</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Scan Points</label>
+                        <select id="scanPoints">
+                            <option value="101">101</option>
+                            <option value="201">201</option>
+                            <option value="301">301</option>
+                            <option value="501">501</option>
+                            <option value="801">801</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>RBW (Resolution Bandwidth)</label>
+                        <select id="rbw">
+                            <option value="auto">Auto</option>
+                            <option value="1">1 kHz</option>
+                            <option value="3">3 kHz</option>
+                            <option value="10">10 kHz</option>
+                            <option value="30">30 kHz</option>
+                            <option value="100">100 kHz</option>
+                        </select>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="startScan()">🔍 Start Scan</button>
+                        <button class="btn btn-secondary" onclick="downloadCSV()">💾 Save CSV</button>
+                    </div>
+
+                    <div class="marker-info">
+                        <h3>📍 Marker Information</h3>
+                        <div id="markerInfo">Click on chart to set marker</div>
+                    </div>
+                </div>
+
+                <!-- Signal Generator Controls -->
+                <div id="generatorControls" class="mode-section">
+                    <h2>📡 Signal Generation</h2>
+                    
+                    <div class="control-group">
+                        <label>Output Frequency</label>
+                        <div class="input-group">
+                            <input type="number" id="genFreq" value="100" step="0.1">
+                            <span class="unit-label">MHz</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Output Level</label>
+                        <div class="input-group">
+                            <input type="number" id="genLevel" value="-10" step="1">
+                            <span class="unit-label">dBm</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Output Mode</label>
+                        <select id="genMode">
+                            <option value="off">OFF</option>
+                            <option value="on">ON</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Modulation</label>
+                        <select id="modulation">
+                            <option value="cw">CW (Continuous Wave)</option>
+                            <option value="am">AM</option>
+                            <option value="fm">FM</option>
+                            <option value="sweep">Frequency Sweep</option>
+                        </select>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-warning" onclick="startGeneration()">📡 Start Output</button>
+                        <button class="btn btn-secondary" onclick="stopGeneration()">⏹️ Stop Output</button>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Sweep Settings (for Sweep Mode)</label>
+                        <div class="input-group">
+                            <input type="number" id="sweepStart" value="1" step="0.1" placeholder="Start MHz">
+                        </div>
+                        <div class="input-group" style="margin-top: 10px;">
+                            <input type="number" id="sweepStop" value="100" step="0.1" placeholder="Stop MHz">
+                        </div>
+                        <div class="input-group" style="margin-top: 10px;">
+                            <input type="number" id="sweepTime" value="1" step="0.1" placeholder="Sweep Time (s)">
+                        </div>
                     </div>
                 </div>
 
                 <div class="control-group">
-                    <label>종료 주파수</label>
-                    <div class="input-group">
-                        <input type="number" id="stopFreq" value="900" step="0.1">
-                        <span class="unit-label">MHz</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>스캔 포인트</label>
-                    <select id="scanPoints">
-                        <option value="101">101</option>
-                        <option value="201">201</option>
-                        <option value="301">301</option>
-                        <option value="501">501</option>
-                        <option value="801">801</option>
-                    </select>
-                </div>
-
-                <div class="control-group">
-                    <label>RBW (Resolution Bandwidth)</label>
-                    <select id="rbw">
-                        <option value="auto">Auto</option>
-                        <option value="1">1 kHz</option>
-                        <option value="3">3 kHz</option>
-                        <option value="10">10 kHz</option>
-                        <option value="30">30 kHz</option>
-                        <option value="100">100 kHz</option>
-                    </select>
-                </div>
-
-                <div class="button-group">
-                    <button class="btn btn-primary" onclick="startScan()">🔍 스캔 시작</button>
-                    <button class="btn btn-secondary" onclick="downloadCSV()">💾 CSV 저장</button>
-                </div>
-
-                <div class="marker-info">
-                    <h3>📍 마커 정보</h3>
-                    <div id="markerInfo">클릭으로 마커 설정</div>
-                </div>
-
-                <div class="control-group">
-                    <label>명령어 로그</label>
-                    <div id="commandLog" class="command-log">시스템 준비 완료...\n</div>
+                    <label>Command Log</label>
+                    <div id="commandLog" class="command-log">System ready...\n</div>
                 </div>
             </div>
 
             <div class="chart-container">
-                <h2>📊 스펙트럼 분석</h2>
+                <h2 id="chartTitle">📊 Spectrum Analysis</h2>
                 <div class="chart-wrapper">
                     <canvas id="spectrumChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="signal-controls">
+        <!-- Analyzer Mode Signal Controls -->
+        <div id="analyzerSignalControls" class="signal-controls">
             <div class="signal-group">
-                <h3>🎯 신호 1 설정</h3>
+                <h3>🎯 Signal 1 Settings</h3>
                 <div class="control-group">
-                    <label>주파수 (MHz)</label>
+                    <label>Frequency (MHz)</label>
                     <input type="number" id="signal1Freq" value="100" step="0.1">
                 </div>
                 <div class="control-group">
-                    <label>진폭 (dBm)</label>
+                    <label>Amplitude (dBm)</label>
                     <input type="number" id="signal1Amp" value="-20" step="1">
                 </div>
                 <div class="control-group">
-                    <label>신호 타입</label>
+                    <label>Signal Type</label>
                     <select id="signal1Type">
-                        <option value="sine">사인파</option>
-                        <option value="square">구형파</option>
-                        <option value="noise">노이즈</option>
+                        <option value="sine">Sine Wave</option>
+                        <option value="square">Square Wave</option>
+                        <option value="noise">Noise</option>
                     </select>
                 </div>
             </div>
 
             <div class="signal-group">
-                <h3>🎯 신호 2 설정</h3>
+                <h3>🎯 Signal 2 Settings</h3>
                 <div class="control-group">
-                    <label>주파수 (MHz)</label>
+                    <label>Frequency (MHz)</label>
                     <input type="number" id="signal2Freq" value="200" step="0.1">
                 </div>
                 <div class="control-group">
-                    <label>진폭 (dBm)</label>
+                    <label>Amplitude (dBm)</label>
                     <input type="number" id="signal2Amp" value="-30" step="1">
                 </div>
                 <div class="control-group">
-                    <label>신호 타입</label>
+                    <label>Signal Type</label>
                     <select id="signal2Type">
-                        <option value="sine">사인파</option>
-                        <option value="square">구형파</option>
-                        <option value="noise">노이즈</option>
+                        <option value="sine">Sine Wave</option>
+                        <option value="square">Square Wave</option>
+                        <option value="noise">Noise</option>
                     </select>
                 </div>
             </div>
 
             <div class="signal-group">
-                <h3>🔧 고급 설정</h3>
+                <h3>🔧 Advanced Settings</h3>
                 <div class="control-group">
-                    <label>출력 레벨 (dBm)</label>
-                    <input type="number" id="outputLevel" value="-10" step="1">
+                    <label>Noise Level (dBm)</label>
+                    <input type="number" id="noiseLevel" value="-80" step="1">
                 </div>
                 <div class="control-group">
-                    <label>출력 모드</label>
-                    <select id="outputMode">
-                        <option value="off">OFF</option>
-                        <option value="on">ON</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label>입력 모드</label>
+                    <label>Input Mode</label>
                     <select id="inputMode">
                         <option value="low">Low Input</option>
                         <option value="high">High Input</option>
                     </select>
                 </div>
-                <button class="btn btn-primary" onclick="applyAdvancedSettings()" style="width: 100%; margin-top: 10px;">⚙️ 설정 적용</button>
+                <button class="btn btn-primary" onclick="applyAdvancedSettings()" style="width: 100%; margin-top: 10px;">⚙️ Apply Settings</button>
             </div>
 
             <div class="signal-group">
-                <h3>🔊 노이즈 & 상태</h3>
+                <h3>🔊 Status & Temperature</h3>
                 <div class="control-group">
-                    <label>노이즈 레벨 (dBm)</label>
-                    <input type="number" id="noiseLevel" value="-80" step="1">
-                </div>
-                <div class="control-group">
-                    <label>온도 (°C)</label>
+                    <label>Temperature (°C)</label>
                     <input type="number" id="temperature" value="25" step="1" readonly>
                 </div>
-                <button class="btn btn-secondary" onclick="getTemperature()" style="width: 100%; margin-top: 10px;">🌡️ 온도 측정</button>
+                <button class="btn btn-secondary" onclick="getTemperature()" style="width: 100%; margin-top: 10px;">🌡️ Measure Temperature</button>
+            </div>
+        </div>
+
+        <!-- Generator Mode Controls -->
+        <div id="generatorSignalControls" class="signal-controls hidden">
+            <div class="signal-group signal-gen-panel">
+                <h3>⚠️ Signal Generator Status</h3>
+                <div class="control-group">
+                    <label>Output Status</label>
+                    <div id="genStatus" class="status-indicator disconnected">Output OFF</div>
+                </div>
+                <div class="control-group">
+                    <label>Current Frequency</label>
+                    <input type="text" id="currentGenFreq" value="--" readonly>
+                </div>
+                <div class="control-group">
+                    <label>Current Level</label>
+                    <input type="text" id="currentGenLevel" value="--" readonly>
+                </div>
+                <button class="btn btn-warning" onclick="emergencyStop()" style="width: 100%; margin-top: 10px;">🚨 Emergency Stop</button>
+            </div>
+
+            <div class="signal-group">
+                <h3>📊 Output Monitoring</h3>
+                <div class="control-group">
+                    <label>Power Monitor</label>
+                    <input type="text" id="powerMonitor" value="-- dBm" readonly>
+                </div>
+                <div class="control-group">
+                    <label>VSWR</label>
+                    <input type="text" id="vswr" value="--" readonly>
+                </div>
+                <button class="btn btn-secondary" onclick="updateMonitoring()" style="width: 100%; margin-top: 10px;">📊 Update Readings</button>
             </div>
         </div>
 
         <div class="status-bar">
-            <div id="statusDisplay">시스템 준비 완료 - 스캔을 시작하세요</div>
-        </div>
-
-        <div class="control-panel" style="margin-top: 20px;">
-            <h2>🚨 USB 인식 문제 해결</h2>
-            <div style="background: #f8f9ff; padding: 15px; border-radius: 10px; font-size: 14px; line-height: 1.6;">
-                <div style="background: #d4edda; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-                    <strong>✅ 현재 상황 분석:</strong><br>
-                    • 에러 메시지: "Chooser dialog blocked by Serial blocklist"<br>
-                    • 차단된 장치: "진욱의 AirPods Pro" (블루투스)<br>
-                    • <strong>실제 문제: tinySA USB 장치가 시스템에서 인식되지 않음</strong>
-                </div>
-
-                <strong>🔧 즉시 해결 방법 (우선순위 순):</strong><br>
-                
-                <div style="margin: 10px 0; padding: 10px; background: #fff3cd; border-radius: 5px;">
-                    <strong>1️⃣ USB 케이블 교체 (가장 중요)</strong><br>
-                    • 현재 케이블이 <strong>충전 전용</strong>일 가능성 높음<br>
-                    • <strong>데이터 전송용</strong> USB-A to USB-C 또는 USB-A to Micro-USB 케이블 사용<br>
-                    • 스마트폰 데이터 케이블 또는 외장하드 케이블 사용 권장<br>
-                    • 케이블 길이는 1m 이하로 제한
-                </div>
-                
-                <div style="margin: 10px 0; padding: 10px; background: #d1ecf1; border-radius: 5px;">
-                    <strong>2️⃣ Windows 장치 관리자 확인</strong><br>
-                    • <code>Win + X</code> → <strong>장치 관리자</strong> 열기<br>
-                    • <strong>"포트(COM 및 LPT)"</strong> 섹션 확인<br>
-                    • <strong>"USB Serial Port (COMx)"</strong> 또는 <strong>"STM32 Virtual ComPort"</strong> 찾기<br>
-                    • 없다면 <strong>"기타 장치"</strong>에서 느낌표(!) 표시된 장치 확인<br>
-                    • 해당 장치 우클릭 → <strong>"드라이버 업데이트"</strong> 시도
-                </div>
-                
-                <div style="margin: 10px 0; padding: 10px; background: #f8d7da; border-radius: 5px;">
-                    <strong>3️⃣ USB 포트 변경</strong><br>
-                    • <strong>USB 2.0 포트</strong> 사용 (USB 3.0보다 안정적)<br>
-                    • <strong>컴퓨터 뒷면의 USB 포트</strong> 우선 사용<br>
-                    • USB 허브 사용 금지, <strong>직접 연결</strong><br>
-                    • 다른 USB 장치들을 분리하고 테스트
-                </div>
-
-                <div style="margin: 10px 0; padding: 10px; background: #e2e3e5; border-radius: 5px;">
-                    <strong>4️⃣ tinySA 재부팅</strong><br>
-                    • tinySA 전원 버튼으로 <strong>완전히 종료</strong><br>
-                    • <strong>10초 대기</strong> 후 다시 전원 켜기<br>
-                    • 화면에 정상적인 스펙트럼이 표시되는지 확인<br>
-                    • USB 연결 후 화면 변화 확인
-                </div>
-
-                <strong>🔍 문제 해결 순서:</strong><br>
-                1. 위 1~4번 모두 시도<br>
-                2. <strong>"USB 장치 확인"</strong> 버튼으로 시스템 상태 점검<br>
-                3. 장치 관리자에서 COM 포트 확인됨 → 브라우저에서 연결 재시도<br>
-                4. 여전히 안 되면 <strong>"포트 문제 해결"</strong> 상세 가이드 확인<br><br>
-
-                <strong>💡 성공 지표:</strong><br>
-                • 장치 관리자에 <strong>"USB Serial Port (COM숫자)"</strong> 표시<br>
-                • 브라우저 포트 선택 시 <strong>AirPods 대신 USB 장치</strong> 표시<br>
-                • 연결 시도 시 <strong>블록리스트 에러 없음</strong>
-            </div>
-        </div>
-
-        <div class="control-panel" style="margin-top: 20px;">
-            <h2>🔧 고급 문제 해결</h2>
-            <div style="background: #f8f9ff; padding: 15px; border-radius: 10px; font-size: 14px; line-height: 1.6;">
-                <strong>Windows 고급 해결법:</strong><br>
-                
-                <div style="margin: 10px 0; padding: 10px; background: #fff3cd; border-radius: 5px;">
-                    <strong>📋 수동 드라이버 설치:</strong><br>
-                    1. 장치 관리자에서 <strong>알 수 없는 장치</strong> 우클릭<br>
-                    2. <strong>"드라이버 업데이트"</strong> → <strong>"컴퓨터에서 드라이버 찾아보기"</strong><br>
-                    3. <strong>"컴퓨터의 사용 가능한 드라이버 목록에서 선택"</strong><br>
-                    4. <strong>"포트(COM 및 LPT)"</strong> → <strong>"USB Serial Port"</strong> 선택
-                </div>
-                
-                <div style="margin: 10px 0; padding: 10px; background: #d1ecf1; border-radius: 5px;">
-                    <strong>⚡ USB 전원 관리 해제:</strong><br>
-                    1. 제어판 → <strong>전원 옵션</strong> → <strong>고급 전원 설정</strong><br>
-                    2. <strong>"USB 설정"</strong> → <strong>"USB 선택적 일시 중단 설정"</strong><br>
-                    3. <strong>"사용 안 함"</strong>으로 변경 후 저장
-                </div>
-
-                <strong>대체 연결 방법:</strong><br>
-                • <strong>다른 컴퓨터에서 테스트</strong> (하드웨어 문제 확인용)<br>
-                • <strong>tinySA 공식 소프트웨어</strong>로 연결 테스트<br>
-                • <strong>터미널 프로그램</strong> (PuTTY, Tera Term)으로 직접 연결 시도<br>
-                • <strong>Arduino IDE Serial Monitor</strong>로 테스트
-            </div>
+            <div id="statusDisplay">System ready - Start scan or signal generation</div>
         </div>
     </div>
 
@@ -552,75 +625,121 @@
         let spectrumData = [];
         let frequencies = [];
         let isScanning = false;
+        let isGenerating = false;
         let serialPort = null;
         let reader = null;
         let writer = null;
         let isConnected = false;
+        let currentMode = 'analyzer'; // 'analyzer' or 'generator'
 
-        // tinySA 장비 식별자
+        // TinySA device identifiers
         const TINYSA_VID = 0x0483; // 1155
         const TINYSA_PID = 0x5740; // 22336
 
-        // 슬립 함수 (최상단에 정의)
+        // Mode switching
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Update button states
+            const analyzerBtn = document.getElementById('analyzerModeBtn');
+            const generatorBtn = document.getElementById('generatorModeBtn');
+            
+            if (mode === 'analyzer') {
+                analyzerBtn.className = 'mode-btn active';
+                generatorBtn.className = 'mode-btn inactive';
+                
+                // Show analyzer controls, hide generator controls
+                document.getElementById('analyzerControls').classList.add('active');
+                document.getElementById('generatorControls').classList.remove('active');
+                document.getElementById('analyzerSignalControls').classList.remove('hidden');
+                document.getElementById('generatorSignalControls').classList.add('hidden');
+                
+                // Update chart title
+                document.getElementById('chartTitle').textContent = '📊 Spectrum Analysis';
+                
+                logCommand('🔄 Switched to Spectrum Analyzer mode');
+                
+                // Stop signal generation if active
+                if (isGenerating) {
+                    stopGeneration();
+                }
+                
+            } else if (mode === 'generator') {
+                analyzerBtn.className = 'mode-btn inactive';
+                generatorBtn.className = 'mode-btn active';
+                
+                // Show generator controls, hide analyzer controls
+                document.getElementById('analyzerControls').classList.remove('active');
+                document.getElementById('generatorControls').classList.add('active');
+                document.getElementById('analyzerSignalControls').classList.add('hidden');
+                document.getElementById('generatorSignalControls').classList.remove('hidden');
+                
+                // Update chart title
+                document.getElementById('chartTitle').textContent = '📡 Signal Generator Output';
+                
+                logCommand('🔄 Switched to Signal Generator mode');
+                
+                // Stop scanning if active
+                if (isScanning) {
+                    isScanning = false;
+                }
+            }
+        }
+
+        // Sleep function
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // 로그 출력 함수 (콘솔과 UI 모두)
+        // Log output function
         function logCommand(message) {
             const logElement = document.getElementById('commandLog');
             const timestamp = new Date().toLocaleTimeString();
             const logMessage = `[${timestamp}] ${message}`;
             
-            // UI에 로그 추가
             logElement.textContent += logMessage + '\n';
             logElement.scrollTop = logElement.scrollHeight;
             
-            // 브라우저 콘솔에도 로그 (디버깅용)
-            if (message.includes('❌') || message.includes('오류') || message.includes('실패')) {
+            if (message.includes('❌') || message.includes('Error') || message.includes('Failed')) {
                 console.error('tinySA:', message);
-            } else if (message.includes('⚠️') || message.includes('경고')) {
+            } else if (message.includes('⚠️') || message.includes('Warning')) {
                 console.warn('tinySA:', message);
-            } else if (message.includes('✅') || message.includes('성공')) {
+            } else if (message.includes('✅') || message.includes('Success')) {
                 console.log('tinySA:', message);
             } else {
                 console.info('tinySA:', message);
             }
         }
 
-        // 연결 상태 업데이트
+        // Update connection status
         function updateConnectionStatus(status, message) {
             const statusElement = document.getElementById('connectionStatus');
             const connectBtn = document.getElementById('connectBtn');
             const disconnectBtn = document.getElementById('disconnectBtn');
             const diagnoseBtn = document.getElementById('diagnoseBtn');
-            const reconnectBtn = document.getElementById('reconnectBtn');
             
             statusElement.className = `status-indicator ${status}`;
             
             switch(status) {
                 case 'connected':
-                    statusElement.textContent = '연결됨 ✓';
+                    statusElement.textContent = 'Connected ✓';
                     connectBtn.disabled = true;
                     disconnectBtn.disabled = false;
                     diagnoseBtn.disabled = false;
-                    reconnectBtn.disabled = false;
                     isConnected = true;
                     break;
                 case 'disconnected':
-                    statusElement.textContent = '연결 안됨';
+                    statusElement.textContent = 'Disconnected';
                     connectBtn.disabled = false;
                     disconnectBtn.disabled = true;
                     diagnoseBtn.disabled = true;
-                    reconnectBtn.disabled = serialPort ? false : true; // 이전 연결 정보가 있으면 재연결 가능
                     isConnected = false;
                     break;
                 case 'connecting':
-                    statusElement.textContent = '연결 중...';
+                    statusElement.textContent = 'Connecting...';
                     connectBtn.disabled = true;
                     disconnectBtn.disabled = true;
                     diagnoseBtn.disabled = true;
-                    reconnectBtn.disabled = true;
                     break;
             }
             
@@ -629,61 +748,53 @@
             }
         }
 
-        // 안전한 명령어 전송 (에러 무시) - 개선됨
+        // Safe command sending
         async function sendCommandSafe(command, timeoutMs = 2000) {
             try {
-                logCommand(`📤 안전 명령: ${command}`);
+                logCommand(`📤 Safe command: ${command}`);
                 await writer.write(new TextEncoder().encode(command + '\r'));
                 
                 const response = await readWithQuickTimeout(timeoutMs);
-                logCommand(`📥 안전 응답: "${response}"`);
+                logCommand(`📥 Safe response: "${response}"`);
                 
                 return response;
             } catch (error) {
-                logCommand(`⚠️ 안전 명령 "${command}" 오류: ${error.message} (무시됨)`);
+                logCommand(`⚠️ Safe command "${command}" error: ${error.message} (ignored)`);
                 return null;
             }
         }
 
-        // 안전한 명령어 전송 (별칭)
-        async function safeCommand(command, timeoutMs = 2000) {
-            return await sendCommandSafe(command, timeoutMs);
-        }
-
-        // 명령어 전송
+        // Send command
         async function sendCommand(command) {
             if (!isConnected) {
-                logCommand(`시뮬레이션: ${command}`);
+                logCommand(`Simulation: ${command}`);
                 return 'OK';
             }
 
             try {
-                logCommand(`전송: ${command}`);
+                logCommand(`Sending: ${command}`);
                 
-                // 명령어 전송 (\r만 사용 - tinySA 표준)
                 const data = new TextEncoder().encode(command + '\r');
                 await writer.write(data);
                 
-                // 응답 읽기
                 const response = await readResponseWithTimeout(5000);
-                logCommand(`응답: "${response}"`);
+                logCommand(`Response: "${response}"`);
                 
                 return response;
                 
             } catch (error) {
-                logCommand(`명령어 오류: ${error.message}`);
+                logCommand(`Command error: ${error.message}`);
                 throw error;
             }
         }
 
-        // 타임아웃이 있는 응답 읽기
+        // Read response with timeout
         async function readResponseWithTimeout(timeoutMs = 5000) {
             return new Promise(async (resolve, reject) => {
                 let response = '';
-                let timeoutId;
                 
                 const timeout = setTimeout(() => {
-                    reject(new Error('응답 시간 초과'));
+                    reject(new Error('Response timeout'));
                 }, timeoutMs);
                 
                 try {
@@ -694,7 +805,6 @@
                         const text = new TextDecoder().decode(value);
                         response += text;
                         
-                        // 다양한 프롬프트 패턴 확인
                         if (response.includes('ch>') || 
                             response.includes('Ch>') || 
                             response.includes('CH>') ||
@@ -703,7 +813,6 @@
                             break;
                         }
                         
-                        // 너무 긴 응답 방지
                         if (response.length > 10000) {
                             break;
                         }
@@ -711,7 +820,6 @@
                     
                     clearTimeout(timeout);
                     
-                    // 프롬프트 제거 및 정리
                     const cleaned = response
                         .replace(/ch>/gi, '')
                         .replace(/>/g, '')
@@ -727,21 +835,16 @@
             });
         }
 
-        // 응답 읽기 (레거시 - 호환성용)
-        async function readResponse() {
-            return await readResponseWithTimeout(5000);
-        }
-
-        // 빠른 타임아웃 읽기
+        // Quick timeout read
         async function readWithQuickTimeout(timeoutMs) {
-            return new Promise(async (resolve, reject) => {
+            return new Promise(async (resolve) => {
                 let response = '';
                 let completed = false;
                 
                 const timeout = setTimeout(() => {
                     if (!completed) {
                         completed = true;
-                        resolve(response); // 타임아웃 시에도 기존 응답 반환
+                        resolve(response);
                     }
                 }, timeoutMs);
                 
@@ -758,13 +861,12 @@
                         const text = new TextDecoder().decode(value);
                         response += text;
                         
-                        // 충분한 응답이 왔으면 조기 종료
                         if (response.length > 10 || response.includes('>')) {
                             break;
                         }
                     }
                 } catch (error) {
-                    // 읽기 오류는 무시하고 기존 응답 반환
+                    // Ignore read errors
                 }
                 
                 if (!completed) {
@@ -775,7 +877,7 @@
             });
         }
 
-        // 연결 정리
+        // Clean up connection
         async function cleanupConnection() {
             try {
                 if (reader) {
@@ -783,7 +885,7 @@
                         await reader.cancel();
                         await reader.releaseLock(); 
                     } catch (e) { 
-                        logCommand(`Reader 정리 중 오류: ${e.message}`);
+                        logCommand(`Reader cleanup error: ${e.message}`);
                     }
                     reader = null;
                 }
@@ -792,7 +894,7 @@
                     try { 
                         await writer.releaseLock(); 
                     } catch (e) { 
-                        logCommand(`Writer 정리 중 오류: ${e.message}`);
+                        logCommand(`Writer cleanup error: ${e.message}`);
                     }
                     writer = null;
                 }
@@ -801,338 +903,71 @@
                     try { 
                         await serialPort.close(); 
                     } catch (e) { 
-                        logCommand(`포트 닫기 중 오류: ${e.message}`);
+                        logCommand(`Port close error: ${e.message}`);
                     }
                 }
             } catch (error) {
-                logCommand(`정리 과정 오류: ${error.message}`);
+                logCommand(`Cleanup error: ${error.message}`);
             }
         }
 
-        // tinySA 장비 연결 (개선된 오류 처리)
+        // Connect device
         async function connectDevice() {
             const deviceMode = document.getElementById('deviceMode').value;
             
             if (deviceMode === 'simulation') {
-                updateConnectionStatus('connected', '시뮬레이션 모드로 연결됨');
+                updateConnectionStatus('connected', 'Connected in simulation mode');
                 return;
             }
 
             if (!('serial' in navigator)) {
-                alert('이 브라우저는 Web Serial API를 지원하지 않습니다. Chrome 기반 브라우저를 사용해주세요.');
+                alert('This browser does not support Web Serial API. Please use Chrome-based browser.');
                 return;
             }
 
             try {
-                updateConnectionStatus('connecting', '1단계: 포트 선택 중...');
+                updateConnectionStatus('connecting', 'Step 1: Selecting port...');
                 
-                // 시리얼 포트 요청 (개선된 오류 처리)
-                logCommand('🔍 시리얼 포트 요청 중...');
+                logCommand('🔍 Requesting serial port...');
                 
                 try {
                     serialPort = await navigator.serial.requestPort();
                 } catch (portError) {
-                    // 특정 오류 메시지 분석
                     if (portError.message.includes('blocklist') || portError.message.includes('blocked')) {
-                        logCommand('❌ 포트 선택 실패: 브라우저가 장치를 차단했습니다');
-                        logCommand('🔍 감지된 문제: USB 장치가 시리얼 포트로 인식되지 않음');
-                        logCommand('');
-                        logCommand('💡 이 문제는 다음 중 하나일 수 있습니다:');
-                        logCommand('   • tinySA가 USB로 제대로 연결되지 않음');
-                        logCommand('   • USB 케이블이 충전 전용 (데이터 전송 불가)');
-                        logCommand('   • 시스템에서 tinySA를 인식하지 못함');
-                        logCommand('   • USB 드라이버 문제');
-                        logCommand('');
-                        logCommand('🔧 해결 방법:');
-                        logCommand('   1. "USB 장치 확인" 버튼으로 시스템 상태 점검');
-                        logCommand('   2. "포트 문제 해결" 버튼으로 상세 가이드 확인');
-                        logCommand('   3. USB 케이블을 데이터 전송용으로 교체');
-                        logCommand('   4. 장치 관리자에서 COM 포트 확인');
-                        
-                        updateConnectionStatus('disconnected', '포트 선택 실패 - USB 장치 문제');
+                        logCommand('❌ Port selection failed: Browser blocked the device');
+                        logCommand('🔍 Detected issue: USB device not recognized as serial port');
+                        updateConnectionStatus('disconnected', 'Port selection failed - USB device issue');
                         return;
                     } else if (portError.message.includes('No port selected')) {
-                        logCommand('⚠️ 사용자가 포트 선택을 취소했습니다');
-                        updateConnectionStatus('disconnected', '포트 선택 취소됨');
+                        logCommand('⚠️ User cancelled port selection');
+                        updateConnectionStatus('disconnected', 'Port selection cancelled');
                         return;
                     } else {
-                        logCommand(`❌ 포트 선택 오류: ${portError.message}`);
-                        updateConnectionStatus('disconnected', `포트 선택 실패: ${portError.message}`);
+                        logCommand(`❌ Port selection error: ${portError.message}`);
+                        updateConnectionStatus('disconnected', `Port selection failed: ${portError.message}`);
                         return;
                     }
                 }
 
                 const portInfo = serialPort.getInfo();
-                logCommand(`✅ 포트 선택됨: VID=0x${portInfo.usbVendorId?.toString(16) || '????'}, PID=0x${portInfo.usbProductId?.toString(16) || '????'}`);
+                logCommand(`✅ Port selected: VID=0x${portInfo.usbVendorId?.toString(16) || '????'}, PID=0x${portInfo.usbProductId?.toString(16) || '????'}`);
 
-                // tinySA 장치 식별
                 if (portInfo.usbVendorId === 0x0483 && portInfo.usbProductId === 0x5740) {
-                    logCommand('🎯 tinySA 장치 확인됨! (VID=0x0483, PID=0x5740)');
+                    logCommand('🎯 tinySA device confirmed! (VID=0x0483, PID=0x5740)');
                 } else if (portInfo.usbVendorId === 0x0483) {
-                    logCommand('⚠️ STM32 기반 장치 감지됨 (tinySA 가능성 높음)');
+                    logCommand('⚠️ STM32-based device detected (likely tinySA)');
                 } else {
-                    logCommand('❓ 알 수 없는 장치입니다. 계속 진행합니다...');
+                    logCommand('❓ Unknown device. Continuing...');
                 }
 
-                const selectedBaudRate = document.getElementById('baudRate').value;
-                let connectConfigs = [];
-
-                if (selectedBaudRate === 'auto') {
-                    // 자동 감지: 9600부터 시작 (시스템 기본값 우선)
-                    connectConfigs = [
-                        { baudRate: 9600, name: '시스템 기본 (9600)' },
-                        { baudRate: 115200, name: 'tinySA 표준 (115200)' },
-                        { baudRate: 19200, name: '저속 안정 (19200)' },
-                        { baudRate: 38400, name: '중간 속도 (38400)' },
-                        { baudRate: 57600, name: 'tinySA 호환 (57600)' },
-                        { baudRate: 230400, name: '고속 (230400)' }
-                    ];
-                } else {
-                    // 사용자 선택 보드레이트 우선 시도
-                    const userBaudRate = parseInt(selectedBaudRate);
-                    connectConfigs = [
-                        { baudRate: userBaudRate, name: `사용자 선택 (${userBaudRate})` }
-                    ];
-                    
-                    // 실패 시 다른 보드레이트도 시도
-                    const backupRates = [9600, 115200, 19200, 38400, 57600, 230400]
-                        .filter(rate => rate !== userBaudRate);
-                    
-                    backupRates.forEach(rate => {
-                        connectConfigs.push({ baudRate: rate, name: `백업 시도 (${rate})` });
-                    });
-                }
-
-                logCommand(`🔧 보드레이트 설정: ${selectedBaudRate === 'auto' ? '자동 감지' : selectedBaudRate + ' bps'}`);
-
-                for (let i = 0; i < connectConfigs.length; i++) {
-                    const config = connectConfigs[i];
-                    
-                    try {
-                        updateConnectionStatus('connecting', `${i+2}단계: ${config.name} 연결 중...`);
-                        logCommand(`🔄 ${config.name} 연결 시도...`);
-                        
-                        // 이전 연결이 있다면 정리
-                        await cleanupConnection();
-                        
-                        // 포트 열기
-                        await serialPort.open({ 
-                            baudRate: config.baudRate,
-                            dataBits: 8,
-                            stopBits: 1,
-                            parity: 'none',
-                            flowControl: 'none',
-                            bufferSize: 255
-                        });
-
-                        logCommand(`📡 포트 열림 성공 (${config.baudRate} bps)`);
-                        logCommand(`   • 데이터 비트: 8, 정지 비트: 1, 패리티: 없음`);
-                        logCommand(`   • 흐름 제어: 없음, 버퍼 크기: 255`);
-
-                        // Reader와 Writer 설정
-                        reader = serialPort.readable.getReader();
-                        writer = serialPort.writable.getWriter();
-                        logCommand(`   • Reader/Writer 설정 완료`);
-
-                        // 연결 안정화 대기
-                        logCommand(`   • 연결 안정화 대기 중... (300ms)`);
-                        await sleep(300);
-
-                        // 간단한 연결 테스트
-                        updateConnectionStatus('connecting', `${i+2}단계: 통신 테스트 (${config.baudRate} bps)`);
-                        const testResult = await quickConnectionTest();
-                        
-                        if (testResult) {
-                            logCommand(`✅ 연결 성공! ${config.name}`);
-                            updateConnectionStatus('connected', `tinySA 연결 완료 (${config.baudRate} bps)`);
-                            
-                            // 기본 초기화
-                            await basicInitialize();
-                            
-                            // 성공한 보드레이트를 UI에 반영
-                            if (selectedBaudRate === 'auto') {
-                                document.getElementById('baudRate').value = config.baudRate.toString();
-                                logCommand(`💡 자동 감지 완료: ${config.baudRate} bps로 설정됨`);
-                            }
-                            
-                            return;
-                        } else {
-                            logCommand(`❌ 통신 실패 (${config.baudRate} bps)`);
-                        }
-
-                    } catch (error) {
-                        logCommand(`❌ ${config.name} 연결 실패: ${error.message}`);
-                        await cleanupConnection();
-                    }
-                    
-                    // 사용자 선택 보드레이트가 실패했고 백업 시도인 경우 짧은 지연
-                    if (i === 0 && selectedBaudRate !== 'auto') {
-                        logCommand(`⏳ 사용자 선택 보드레이트 실패, 백업 보드레이트로 시도...`);
-                        await sleep(500);
-                    }
-                }
-
-                throw new Error('모든 보드레이트에서 연결 실패 - 장비와 케이블을 확인하세요');
-                
-            } catch (error) {
-                updateConnectionStatus('disconnected', `연결 실패: ${error.message}`);
-                logCommand(`🚨 최종 연결 실패: ${error.message}`);
-                
-                // 연결 실패 체크리스트 제공
-                logCommand('');
-                logCommand('🔧 === 연결 실패 체크리스트 ===');
-                logCommand('다음 항목들을 순서대로 확인해보세요:');
-                logCommand('');
-                logCommand('1️⃣ USB 연결 상태:');
-                logCommand('   □ 데이터 전송용 케이블인가? (충전 전용 ❌)');
-                logCommand('   □ 케이블을 다른 것으로 교체해봤는가?');
-                logCommand('   □ USB 허브 없이 직접 연결했는가?');
-                logCommand('   □ USB 2.0 포트를 사용했는가?');
-                logCommand('');
-                logCommand('2️⃣ tinySA 장비 상태:');
-                logCommand('   □ 전원이 켜져 있고 화면이 정상인가?');
-                logCommand('   □ 장비를 껐다가 다시 켜봤는가?');
-                logCommand('   □ USB 포트에 이물질이 없는가?');
-                logCommand('');
-                logCommand('3️⃣ 시스템 인식 확인:');
-                logCommand('   □ 장치 관리자에서 COM 포트가 보이는가?');
-                logCommand('   □ "USB 장치 확인" 버튼으로 점검했는가?');
-                logCommand('   □ 다른 프로그램에서 같은 포트를 사용 중이지 않은가?');
-                logCommand('');
-                logCommand('4️⃣ 즉시 해결 단계:');
-                logCommand('   1. "USB 장치 확인" 클릭');
-                logCommand('   2. "포트 문제 해결" 클릭');
-                logCommand('   3. USB 케이블 교체 후 재시도');
-                logCommand('   4. 컴퓨터 재부팅 후 재시도');
-                
-                await cleanupConnection();
-            }
-        }
-
-        // 빠른 연결 테스트
-        async function quickConnectionTest() {
-            try {
-                logCommand('🔄 통신 테스트 시작...');
-                
-                // 버퍼 정리
-                await sleep(100);
-                
-                // 1차 테스트: 간단한 엔터 전송
-                logCommand('   📤 1차 테스트: CR 전송');
-                await writer.write(new TextEncoder().encode('\r'));
-                
-                const response1 = await readWithQuickTimeout(1500);
-                logCommand(`   📥 1차 응답: "${response1}" (길이: ${response1.length})`);
-                
-                if (response1.length > 0) {
-                    const asciiCodes = Array.from(response1).map(c => c.charCodeAt(0)).join(' ');
-                    logCommand(`   🔢 ASCII 코드: [${asciiCodes}]`);
-                }
-                
-                // 2차 테스트: CRLF 전송
-                logCommand('   📤 2차 테스트: CRLF 전송');
-                await writer.write(new TextEncoder().encode('\r\n'));
-                
-                const response2 = await readWithQuickTimeout(1000);
-                logCommand(`   📥 2차 응답: "${response2}" (길이: ${response2.length})`);
-                
-                // 응답 분석
-                const combinedResponse = response1 + response2;
-                logCommand(`   🔍 종합 분석: "${combinedResponse}"`);
-                
-                // tinySA 프롬프트 패턴 확인
-                if (combinedResponse.includes('ch>') || 
-                    combinedResponse.includes('Ch>') || 
-                    combinedResponse.includes('CH>')) {
-                    logCommand('   ✅ tinySA 프롬프트 "ch>" 확인됨');
-                    return true;
-                } else if (combinedResponse.includes('>')) {
-                    logCommand('   ✅ 일반 프롬프트 ">" 확인됨 (tinySA 가능성 높음)');
-                    return true;
-                } else if (combinedResponse.length > 0) {
-                    logCommand('   ⚠️ 응답은 있지만 프롬프트 형식 다름');
-                    logCommand('   💡 장비가 다른 모드에 있거나 다른 기기일 수 있음');
-                    
-                    // 그래도 통신은 되므로 연결 시도
-                    if (combinedResponse.length > 3) {
-                        logCommand('   🔄 응답이 충분하므로 연결 시도함');
-                        return true;
-                    }
-                    return false;
-                } else {
-                    logCommand('   ❌ 응답 없음');
-                    logCommand('   🔧 가능한 원인:');
-                    logCommand('      • 보드레이트 불일치');
-                    logCommand('      • 케이블 불량 (충전 전용)');
-                    logCommand('      • 장비 전원 꺼짐');
-                    logCommand('      • 다른 프로그램에서 포트 사용 중');
-                    return false;
-                }
-                
-            } catch (error) {
-                logCommand(`❌ 연결 테스트 실패: ${error.message}`);
-                logCommand('🔧 세부 오류 정보:');
-                logCommand(`   • 오류 타입: ${error.constructor.name}`);
-                logCommand(`   • 오류 스택: ${error.stack?.split('\n')[0] || '정보 없음'}`);
-                return false;
-            }
-        }
-
-        // 기본 초기화
-        async function basicInitialize() {
-            try {
-                logCommand('🔧 기본 초기화 시작...');
-                
-                // 안전한 기본 명령어들
-                await sleep(200);
-                await safeCommand('resume', 1000);
-                await sleep(200);
-                
-                logCommand('✅ 기본 초기화 완료');
-                
-            } catch (error) {
-                logCommand(`⚠️ 초기화 경고: ${error.message} (정상 동작 가능)`);
-            }
-        }
-
-        // 장비 연결 해제
-        async function disconnectDevice() {
-            try {
-                logCommand('🔌 연결 해제 시작...');
-                updateConnectionStatus('connecting', '연결 해제 중...');
-                
-                await cleanupConnection();
-                serialPort = null;
-                
-                updateConnectionStatus('disconnected', '장비 연결 해제 완료');
-                
-            } catch (error) {
-                logCommand(`연결 해제 오류: ${error.message}`);
-                updateConnectionStatus('disconnected', '연결 해제됨 (오류 발생)');
-            }
-        }
-
-        // 빠른 재연결
-        async function quickReconnect() {
-            if (!serialPort) {
-                logCommand('❌ 이전 연결 정보가 없습니다. 새로 연결하세요.');
-                return;
-            }
-
-            try {
-                logCommand('🔄 빠른 재연결 시도...');
-                updateConnectionStatus('connecting', '빠른 재연결 중...');
-                
-                // 기존 연결 정리
-                await cleanupConnection();
-                
-                // 현재 선택된 보드레이트 사용
                 const selectedBaudRate = document.getElementById('baudRate').value;
                 const baudRate = selectedBaudRate === 'auto' ? 9600 : parseInt(selectedBaudRate);
+
+                updateConnectionStatus('connecting', `Step 2: Connecting at ${baudRate} bps...`);
+                logCommand(`🔧 Baud rate: ${baudRate} bps`);
+
+                await cleanupConnection();
                 
-                logCommand(`🔧 재연결 보드레이트: ${baudRate} bps`);
-                
-                // 이전과 같은 포트로 재연결 시도
                 await serialPort.open({ 
                     baudRate: baudRate,
                     dataBits: 8,
@@ -1142,792 +977,157 @@
                     bufferSize: 255
                 });
 
+                logCommand(`📡 Port opened successfully (${baudRate} bps)`);
+
                 reader = serialPort.readable.getReader();
                 writer = serialPort.writable.getWriter();
+                logCommand(`   • Reader/Writer setup complete`);
 
                 await sleep(300);
-                
+
+                updateConnectionStatus('connecting', `Step 3: Communication test (${baudRate} bps)`);
                 const testResult = await quickConnectionTest();
                 
                 if (testResult) {
-                    updateConnectionStatus('connected', `빠른 재연결 성공! (${baudRate} bps)`);
+                    logCommand(`✅ Connection successful!`);
+                    updateConnectionStatus('connected', `tinySA connected (${baudRate} bps)`);
+                    
                     await basicInitialize();
+                    return;
                 } else {
-                    throw new Error('통신 테스트 실패');
+                    throw new Error('Communication test failed');
                 }
                 
             } catch (error) {
-                logCommand(`❌ 빠른 재연결 실패: ${error.message}`);
-                updateConnectionStatus('disconnected', '빠른 재연결 실패 - 새로 연결하세요');
+                updateConnectionStatus('disconnected', `Connection failed: ${error.message}`);
+                logCommand(`🚨 Final connection failure: ${error.message}`);
                 await cleanupConnection();
             }
         }
 
-        // 연결 리셋
-        async function resetConnection() {
+        // Quick connection test
+        async function quickConnectionTest() {
             try {
-                logCommand('🔧 연결 리셋 시작...');
+                logCommand('🔄 Communication test started...');
                 
-                // 모든 연결 정보 초기화
+                await sleep(100);
+                
+                logCommand('   📤 Test 1: Sending CR');
+                await writer.write(new TextEncoder().encode('\r'));
+                
+                const response1 = await readWithQuickTimeout(1500);
+                logCommand(`   📥 Response 1: "${response1}" (length: ${response1.length})`);
+                
+                logCommand('   📤 Test 2: Sending CRLF');
+                await writer.write(new TextEncoder().encode('\r\n'));
+                
+                const response2 = await readWithQuickTimeout(1000);
+                logCommand(`   📥 Response 2: "${response2}" (length: ${response2.length})`);
+                
+                const combinedResponse = response1 + response2;
+                logCommand(`   🔍 Combined analysis: "${combinedResponse}"`);
+                
+                if (combinedResponse.includes('ch>') || 
+                    combinedResponse.includes('Ch>') || 
+                    combinedResponse.includes('CH>')) {
+                    logCommand('   ✅ tinySA prompt "ch>" confirmed');
+                    return true;
+                } else if (combinedResponse.includes('>')) {
+                    logCommand('   ✅ General prompt ">" confirmed (likely tinySA)');
+                    return true;
+                } else if (combinedResponse.length > 0) {
+                    logCommand('   ⚠️ Response received but prompt format different');
+                    if (combinedResponse.length > 3) {
+                        logCommand('   🔄 Response sufficient, attempting connection');
+                        return true;
+                    }
+                    return false;
+                } else {
+                    logCommand('   ❌ No response');
+                    return false;
+                }
+                
+            } catch (error) {
+                logCommand(`❌ Connection test failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Basic initialization
+        async function basicInitialize() {
+            try {
+                logCommand('🔧 Basic initialization started...');
+                
+                await sleep(200);
+                await sendCommandSafe('resume', 1000);
+                await sleep(200);
+                
+                logCommand('✅ Basic initialization complete');
+                
+            } catch (error) {
+                logCommand(`⚠️ Initialization warning: ${error.message} (normal operation possible)`);
+            }
+        }
+
+        // Disconnect device
+        async function disconnectDevice() {
+            try {
+                logCommand('🔌 Disconnection started...');
+                updateConnectionStatus('connecting', 'Disconnecting...');
+                
+                // Stop any ongoing operations
+                if (isGenerating) {
+                    await stopGeneration();
+                }
+                
                 await cleanupConnection();
                 serialPort = null;
-                reader = null;
-                writer = null;
                 
-                updateConnectionStatus('disconnected', '연결이 완전히 리셋되었습니다');
-                logCommand('✅ 연결 리셋 완료 - 새로 연결할 수 있습니다');
+                updateConnectionStatus('disconnected', 'Device disconnected successfully');
                 
             } catch (error) {
-                logCommand(`리셋 오류: ${error.message}`);
+                logCommand(`Disconnection error: ${error.message}`);
+                updateConnectionStatus('disconnected', 'Disconnected (error occurred)');
             }
         }
 
-        // 연결 진단 기능 (개선됨)
+        // Diagnose connection
         async function diagnoseConnection() {
             if (!isConnected) {
-                logCommand('❌ 장비가 연결되지 않았습니다');
-                alert('먼저 장비를 연결해주세요.');
+                logCommand('❌ Device not connected');
+                alert('Please connect device first.');
                 return;
             }
 
             try {
-                logCommand('🔍 === 연결 진단 시작 ===');
+                logCommand('🔍 === Connection diagnosis started ===');
                 
-                // 1. 기본 통신 테스트
-                logCommand('1️⃣ 기본 통신 상태 확인...');
-                const basicTest = await safeCommand('', 1000);
-                logCommand(`   기본 응답: "${basicTest || '응답 없음'}"`);
+                logCommand('1️⃣ Basic communication check...');
+                const basicTest = await sendCommandSafe('', 1000);
+                logCommand(`   Basic response: "${basicTest || 'No response'}"`);
 
-                // 2. 프롬프트 확인
-                logCommand('2️⃣ 프롬프트 확인...');
-                const promptTest = await safeCommand('\r', 1000);
-                logCommand(`   프롬프트: "${promptTest || '응답 없음'}"`);
+                logCommand('2️⃣ Prompt check...');
+                const promptTest = await sendCommandSafe('\r', 1000);
+                logCommand(`   Prompt: "${promptTest || 'No response'}"`);
 
-                // 3. 기본 명령어 테스트
-                logCommand('3️⃣ 기본 명령어 테스트...');
-                const resumeTest = await safeCommand('resume', 2000);
-                logCommand(`   Resume 응답: "${resumeTest || '응답 없음'}"`);
+                logCommand('3️⃣ Basic command test...');
+                const resumeTest = await sendCommandSafe('resume', 2000);
+                logCommand(`   Resume response: "${resumeTest || 'No response'}"`);
 
-                // 4. 주파수 정보 확인
-                logCommand('4️⃣ 주파수 정보 확인...');
-                const freqTest = await safeCommand('frequencies', 3000);
-                if (freqTest && freqTest.length > 0) {
-                    const freqLines = freqTest.split('\n').filter(line => line.trim());
-                    logCommand(`   주파수 포인트: ${freqLines.length}개`);
-                    if (freqLines.length > 0) {
-                        logCommand(`   첫 번째 주파수: ${freqLines[0]}`);
-                    }
-                } else {
-                    logCommand(`   주파수 정보: 없음`);
-                }
-
-                // 5. 데이터 접근 테스트
-                logCommand('5️⃣ 데이터 접근 테스트...');
-                const dataTest = await safeCommand('data 0', 3000);
-                if (dataTest && dataTest.length > 0) {
-                    const dataLines = dataTest.split('\n').filter(line => line.trim());
-                    logCommand(`   데이터 포인트: ${dataLines.length}개`);
-                } else {
-                    logCommand(`   데이터: 접근 불가`);
-                }
-
-                // 6. 종합 결과
-                logCommand('6️⃣ 진단 결과:');
-                if ((basicTest && basicTest.includes('>')) || 
-                    (promptTest && promptTest.includes('>'))) {
-                    logCommand('   ✅ 통신 상태: 정상');
-                    logCommand('   ✅ tinySA 응답 확인됨');
-                    
-                    if (freqTest && freqTest.length > 10) {
-                        logCommand('   ✅ 데이터 수신: 가능');
-                        logCommand('   💡 스펙트럼 분석 준비 완료');
-                    } else {
-                        logCommand('   ⚠️  데이터 수신: 제한적');
-                        logCommand('   💡 기본 기능은 사용 가능');
-                    }
-                } else {
-                    logCommand('   ❌ 통신 상태: 불안정');
-                    logCommand('   💡 연결을 다시 시도하세요');
-                }
-
-                logCommand('🔍 === 진단 완료 ===');
+                logCommand('🔍 === Diagnosis complete ===');
                 
             } catch (error) {
-                logCommand(`❌ 진단 오류: ${error.message}`);
+                logCommand(`❌ Diagnosis error: ${error.message}`);
             }
         }
 
-        // 실제 장비에서 스펙트럼 데이터 가져오기 (개선됨)
-        async function getHardwareSpectrum() {
-            try {
-                const startFreq = parseFloat(document.getElementById('startFreq').value) * 1e6; // MHz to Hz
-                const stopFreq = parseFloat(document.getElementById('stopFreq').value) * 1e6;
-                const points = parseInt(document.getElementById('scanPoints').value);
-
-                logCommand('📡 === 하드웨어 스펙트럼 측정 시작 ===');
-                logCommand(`설정 범위: ${startFreq/1e6} - ${stopFreq/1e6} MHz, ${points} 포인트`);
-
-                // 1단계: 측정 모드 확인 및 설정
-                logCommand('1️⃣ 측정 모드 설정...');
-                await safeCommand('pause');  // 측정 일시정지
-                await sleep(200);
-
-                // 2단계: 주파수 범위 설정
-                logCommand('2️⃣ 주파수 범위 설정...');
-                await safeCommand(`sweep start ${Math.floor(startFreq)}`);
-                await sleep(100);
-                await safeCommand(`sweep stop ${Math.floor(stopFreq)}`);
-                await sleep(100);
-
-                // 3단계: 스캔 시작 및 완료 대기
-                logCommand('3️⃣ 스캔 실행...');
-                await safeCommand('resume');
-                
-                // 스캔 완료 대기 (포인트 수에 따라 시간 조정)
-                const scanTime = Math.max(1000, points * 5); // 최소 1초, 포인트당 5ms
-                logCommand(`   스캔 완료 대기 중... (${scanTime}ms)`);
-                await sleep(scanTime);
-
-                // 4단계: 주파수 데이터 수신
-                logCommand('4️⃣ 주파수 데이터 수신...');
-                const freqResponse = await safeCommand('frequencies', 5000);
-                
-                if (!freqResponse || freqResponse.length < 10) {
-                    logCommand(`   ❌ 주파수 데이터 없음: "${freqResponse}"`);
-                    throw new Error('주파수 데이터를 가져올 수 없습니다');
-                }
-
-                logCommand(`   📊 주파수 응답 길이: ${freqResponse.length}자`);
-                
-                // 5단계: 스펙트럼 데이터 수신
-                logCommand('5️⃣ 스펙트럼 데이터 수신...');
-                const dataResponse = await safeCommand('data 0', 5000);
-                
-                if (!dataResponse || dataResponse.length < 10) {
-                    logCommand(`   ❌ 스펙트럼 데이터 없음: "${dataResponse}"`);
-                    throw new Error('스펙트럼 데이터를 가져올 수 없습니다');
-                }
-
-                logCommand(`   📊 스펙트럼 응답 길이: ${dataResponse.length}자`);
-
-                // 6단계: 데이터 파싱 (개선된 로직)
-                logCommand('6️⃣ 데이터 파싱...');
-                
-                // 주파수 데이터 파싱
-                const freqLines = freqResponse
-                    .split(/[\r\n]+/)                    // 줄바꿈으로 분리
-                    .map(line => line.trim())            // 공백 제거
-                    .filter(line => line.length > 0)     // 빈 줄 제거
-                    .filter(line => !isNaN(parseFloat(line))) // 숫자가 아닌 줄 제거
-                    .map(line => parseFloat(line));      // 숫자 변환
-
-                logCommand(`   주파수 파싱 결과: ${freqLines.length}개 포인트`);
-                if (freqLines.length > 0) {
-                    logCommand(`   첫 번째 주파수: ${freqLines[0]/1e6} MHz`);
-                    logCommand(`   마지막 주파수: ${freqLines[freqLines.length-1]/1e6} MHz`);
-                }
-
-                // 스펙트럼 데이터 파싱
-                const dataLines = dataResponse
-                    .split(/[\r\n]+/)                    // 줄바꿈으로 분리
-                    .map(line => line.trim())            // 공백 제거
-                    .filter(line => line.length > 0)     // 빈 줄 제거
-                    .filter(line => !isNaN(parseFloat(line))) // 숫자가 아닌 줄 제거
-                    .map(line => parseFloat(line));      // 숫자 변환
-
-                logCommand(`   스펙트럼 파싱 결과: ${dataLines.length}개 포인트`);
-                if (dataLines.length > 0) {
-                    logCommand(`   최소 신호: ${Math.min(...dataLines)} dBm`);
-                    logCommand(`   최대 신호: ${Math.max(...dataLines)} dBm`);
-                }
-
-                // 7단계: 데이터 검증 및 조정
-                logCommand('7️⃣ 데이터 검증...');
-                
-                if (freqLines.length === 0) {
-                    throw new Error('유효한 주파수 데이터가 없습니다');
-                }
-                
-                if (dataLines.length === 0) {
-                    throw new Error('유효한 스펙트럼 데이터가 없습니다');
-                }
-
-                // 데이터 길이 맞추기
-                const minLength = Math.min(freqLines.length, dataLines.length);
-                logCommand(`   데이터 길이 조정: ${minLength}개 포인트로 맞춤`);
-
-                const freqs = freqLines.slice(0, minLength).map(freq => freq / 1e6); // Hz to MHz
-                const spectrum = dataLines.slice(0, minLength);
-
-                // 8단계: 최종 검증
-                logCommand('8️⃣ 최종 검증...');
-                logCommand(`   ✅ 주파수 범위: ${freqs[0].toFixed(2)} - ${freqs[freqs.length-1].toFixed(2)} MHz`);
-                logCommand(`   ✅ 신호 범위: ${Math.min(...spectrum).toFixed(1)} - ${Math.max(...spectrum).toFixed(1)} dBm`);
-                logCommand(`   ✅ 총 포인트: ${freqs.length}개`);
-
-                logCommand('📡 === 하드웨어 스펙트럼 측정 완료 ===');
-                
-                return { frequencies: freqs, spectrum: spectrum };
-                
-            } catch (error) {
-                logCommand(`❌ 하드웨어 스캔 오류: ${error.message}`);
-                logCommand('');
-                logCommand('🔧 하드웨어 데이터 수신 문제 해결:');
-                logCommand('   • tinySA 화면에서 스펙트럼이 정상 표시되는지 확인');
-                logCommand('   • "연결 진단" 실행하여 통신 상태 점검');
-                logCommand('   • 주파수 범위를 더 작게 설정해서 테스트');
-                logCommand('   • 스캔 포인트를 101개로 줄여서 테스트');
-                logCommand('   • "원시 데이터 모니터"로 실제 응답 확인');
-                logCommand('');
-                logCommand('⚠️ 시뮬레이션 데이터로 대체합니다...');
-                
-                // 오류 시 시뮬레이션 데이터로 대체
-                return simulateSpectrum();
-            }
-        }
-
-        // 전체 시스템 진단
-        async function fullDiagnosis() {
-            logCommand('🔬 === 전체 시스템 진단 시작 ===');
-            
-            // 1. 브라우저 환경 점검
-            logCommand('');
-            logCommand('1️⃣ 브라우저 환경 점검');
-            logCommand(`   • 브라우저: ${navigator.userAgent.split(' ').pop()}`);
-            logCommand(`   • Web Serial API: ${('serial' in navigator) ? '✅ 지원됨' : '❌ 지원 안됨'}`);
-            logCommand(`   • HTTPS/localhost: ${(location.protocol === 'https:' || location.hostname === 'localhost') ? '✅ 안전한 연결' : '⚠️ 보안 연결 필요'}`);
-            
-            // 2. 시리얼 포트 권한 확인
-            logCommand('');
-            logCommand('2️⃣ 시리얼 포트 권한 확인');
-            try {
-                const ports = await navigator.serial.getPorts();
-                logCommand(`   • 기존 허용된 포트: ${ports.length}개`);
-                ports.forEach((port, index) => {
-                    const info = port.getInfo();
-                    logCommand(`     ${index+1}. VID=0x${info.usbVendorId?.toString(16) || '????'}, PID=0x${info.usbProductId?.toString(16) || '????'}`);
-                });
-                
-                if (ports.length === 0) {
-                    logCommand('   ⚠️ 허용된 포트가 없습니다. "장비 연결" 버튼으로 포트를 선택하세요.');
-                }
-            } catch (error) {
-                logCommand(`   ❌ 포트 권한 확인 실패: ${error.message}`);
-            }
-
-            // 3. 현재 연결 상태 분석
-            logCommand('');
-            logCommand('3️⃣ 현재 연결 상태');
-            logCommand(`   • 연결 상태: ${isConnected ? '✅ 연결됨' : '❌ 연결 안됨'}`);
-            logCommand(`   • 시리얼 포트: ${serialPort ? '✅ 포트 객체 존재' : '❌ 포트 없음'}`);
-            logCommand(`   • Reader: ${reader ? '✅ 활성' : '❌ 비활성'}`);
-            logCommand(`   • Writer: ${writer ? '✅ 활성' : '❌ 비활성'}`);
-            
-            if (serialPort) {
-                try {
-                    const portInfo = serialPort.getInfo();
-                    logCommand(`   • 포트 정보: VID=0x${portInfo.usbVendorId?.toString(16)}, PID=0x${portInfo.usbProductId?.toString(16)}`);
-                    logCommand(`   • 포트 상태: ${serialPort.readable ? '✅ 읽기 가능' : '❌ 읽기 불가'}`);
-                    logCommand(`   • 쓰기 상태: ${serialPort.writable ? '✅ 쓰기 가능' : '❌ 쓰기 불가'}`);
-                } catch (error) {
-                    logCommand(`   ❌ 포트 정보 읽기 실패: ${error.message}`);
-                }
-            }
-
-            // 4. 보드레이트 및 설정 확인
-            logCommand('');
-            logCommand('4️⃣ 통신 설정 확인');
-            const selectedBaudRate = document.getElementById('baudRate').value;
-            logCommand(`   • 선택된 보드레이트: ${selectedBaudRate}`);
-            logCommand(`   • 장비 모드: ${document.getElementById('deviceMode').value}`);
-
-            // 5. 연결 테스트 (연결된 경우)
-            if (isConnected && serialPort && reader && writer) {
-                logCommand('');
-                logCommand('5️⃣ 통신 테스트');
-                await detailedConnectionTest();
-            } else {
-                logCommand('');
-                logCommand('5️⃣ 통신 테스트');
-                logCommand('   ⚠️ 장비가 연결되지 않아 통신 테스트를 건너뜁니다.');
-                logCommand('   💡 먼저 "장비 연결" 후 진단을 다시 실행하세요.');
-            }
-
-            // 6. 문제 해결 제안
-            logCommand('');
-            logCommand('6️⃣ 문제 해결 제안');
-            
-            if (!('serial' in navigator)) {
-                logCommand('   🔧 Chrome 기반 브라우저 사용 필요');
-            } else if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-                logCommand('   🔧 HTTPS 또는 localhost에서 실행 필요');
-            } else if (!isConnected) {
-                logCommand('   🔧 연결 시도 단계:');
-                logCommand('      1. tinySA 전원 확인 및 USB 케이블 교체');
-                logCommand('      2. 보드레이트를 9600으로 설정 후 연결');
-                logCommand('      3. 장치 관리자에서 COM 포트 상태 확인');
-                logCommand('      4. 다른 프로그램에서 포트 사용 중인지 확인');
-            } else {
-                logCommand('   ✅ 연결 상태 정상');
-            }
-
-            logCommand('');
-            logCommand('🔬 === 전체 진단 완료 ===');
-        }
-
-        // 상세 연결 테스트
-        async function detailedConnectionTest() {
-            try {
-                logCommand('   📡 기본 통신 확인...');
-                
-                // 빈 명령어 전송
-                await writer.write(new TextEncoder().encode('\r'));
-                const response1 = await readWithQuickTimeout(1000);
-                logCommand(`      응답1: "${response1}" (길이: ${response1.length})`);
-                
-                // 다른 명령어 시도
-                await writer.write(new TextEncoder().encode('\r\n'));
-                const response2 = await readWithQuickTimeout(1000);
-                logCommand(`      응답2: "${response2}" (길이: ${response2.length})`);
-                
-                // 프롬프트 패턴 분석
-                const combinedResponse = response1 + response2;
-                if (combinedResponse.includes('ch>')) {
-                    logCommand('   ✅ tinySA 프롬프트 "ch>" 감지됨');
-                } else if (combinedResponse.includes('>')) {
-                    logCommand('   ✅ 일반 프롬프트 ">" 감지됨');
-                } else if (combinedResponse.length > 0) {
-                    logCommand('   ⚠️ 응답은 있지만 프롬프트 패턴 불일치');
-                    logCommand(`      수신 데이터 분석: "${combinedResponse}"`);
-                } else {
-                    logCommand('   ❌ 응답 없음 - 보드레이트 또는 케이블 문제 가능성');
-                }
-                
-                // ASCII 코드 분석
-                if (combinedResponse.length > 0) {
-                    const asciiCodes = Array.from(combinedResponse).map(char => char.charCodeAt(0));
-                    logCommand(`      ASCII 코드: [${asciiCodes.join(', ')}]`);
-                }
-                
-            } catch (error) {
-                logCommand(`   ❌ 통신 테스트 오류: ${error.message}`);
-            }
-        }
-
-        // 원시 데이터 모니터
-        async function monitorRawData() {
-            if (!isConnected || !reader) {
-                alert('먼저 장비를 연결해주세요.');
-                return;
-            }
-
-            logCommand('📡 === 원시 데이터 모니터 시작 ===');
-            logCommand('⏹️ 모니터 중지: 페이지 새로고침 또는 연결 해제');
-            logCommand('');
-
-            let monitorCount = 0;
-            const maxMonitorTime = 30000; // 30초
-            const startTime = Date.now();
-
-            try {
-                while (isConnected && (Date.now() - startTime) < maxMonitorTime) {
-                    // 주기적으로 간단한 명령어 전송
-                    if (monitorCount % 5 === 0) {
-                        await writer.write(new TextEncoder().encode('\r'));
-                        logCommand(`[${monitorCount}] 명령 전송: "\\r"`);
-                    }
-
-                    // 데이터 읽기 시도
-                    try {
-                        const readPromise = reader.read();
-                        const timeoutPromise = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('timeout')), 1000)
-                        );
-                        
-                        const { value, done } = await Promise.race([readPromise, timeoutPromise]);
-                        
-                        if (done) {
-                            logCommand('[Monitor] Reader 종료됨');
-                            break;
-                        }
-
-                        if (value && value.length > 0) {
-                            const text = new TextDecoder().decode(value);
-                            const asciiCodes = Array.from(value).join(' ');
-                            logCommand(`[${monitorCount}] 수신: "${text}" | Bytes: [${asciiCodes}]`);
-                        }
-                        
-                    } catch (error) {
-                        if (error.message !== 'timeout') {
-                            logCommand(`[${monitorCount}] 읽기 오류: ${error.message}`);
-                        }
-                    }
-
-                    monitorCount++;
-                    await sleep(200);
-                }
-
-            } catch (error) {
-                logCommand(`📡 모니터 오류: ${error.message}`);
-            }
-
-            logCommand('');
-            logCommand('📡 === 원시 데이터 모니터 종료 ===');
-        }
-
-        // USB 장치 확인
-        async function checkUSBDevices() {
-            logCommand('🔍 === USB 장치 상태 확인 ===');
-            
-            try {
-                // 1. 기존 허용된 포트 확인
-                logCommand('1️⃣ 기존 허용된 시리얼 포트 확인...');
-                const existingPorts = await navigator.serial.getPorts();
-                
-                if (existingPorts.length === 0) {
-                    logCommand('   ❌ 허용된 시리얼 포트가 없습니다');
-                    logCommand('   💡 이는 tinySA가 처음 연결이거나 USB 인식 문제일 수 있습니다');
-                } else {
-                    logCommand(`   ✅ 허용된 포트 ${existingPorts.length}개 발견:`);
-                    existingPorts.forEach((port, index) => {
-                        const info = port.getInfo();
-                        logCommand(`     ${index+1}. VID=0x${info.usbVendorId?.toString(16) || '????'}, PID=0x${info.usbProductId?.toString(16) || '????'}`);
-                        
-                        // tinySA 식별자 확인
-                        if (info.usbVendorId === 0x0483 && info.usbProductId === 0x5740) {
-                            logCommand('       ✅ tinySA 장치로 확인됨!');
-                        } else if (info.usbVendorId === 0x0483) {
-                            logCommand('       ⚠️ STM32 기반 장치 (tinySA 가능성 높음)');
-                        }
-                    });
-                }
-
-                // 2. USB 블록리스트 문제 확인
-                logCommand('');
-                logCommand('2️⃣ USB 블록리스트 문제 분석...');
-                logCommand('   🔍 발견된 에러: "Chooser dialog blocked by Serial blocklist"');
-                logCommand('   📱 차단된 장치: "진욱의 AirPods Pro" (블루투스)');
-                logCommand('   ');
-                logCommand('   💡 문제 분석:');
-                logCommand('      • 브라우저가 블루투스 장치를 시리얼 포트로 잘못 인식');
-                logCommand('      • 실제 tinySA USB 장치가 시스템에서 인식되지 않음');
-                logCommand('      • 포트 선택 대화상자에 올바른 USB 장치가 나타나지 않음');
-
-                // 3. 시스템 레벨 확인 가이드
-                logCommand('');
-                logCommand('3️⃣ 시스템 레벨 USB 인식 확인 가이드:');
-                logCommand('');
-                logCommand('   🪟 Windows 확인 방법:');
-                logCommand('      1. Win+X → 장치 관리자 열기');
-                logCommand('      2. "포트(COM 및 LPT)" 섹션 확인');
-                logCommand('      3. "USB Serial Port (COMx)" 또는 "STM32 Virtual ComPort" 찾기');
-                logCommand('      4. 해당 포트 우클릭 → 속성 → 세부 정보 탭');
-                logCommand('      5. 하드웨어 ID에서 VID_0483&PID_5740 확인');
-                logCommand('');
-                logCommand('   🍎 macOS 확인 방법:');
-                logCommand('      터미널에서: ls /dev/cu.* | grep -i usb');
-                logCommand('      예상 결과: /dev/cu.usbmodem* 또는 /dev/cu.usbserial*');
-                logCommand('');
-                logCommand('   🐧 Linux 확인 방법:');
-                logCommand('      터미널에서: lsusb | grep 0483:5740');
-                logCommand('      dmesg | grep -i tty 로 포트 확인');
-
-                // 4. 문제 해결 단계
-                logCommand('');
-                logCommand('4️⃣ 즉시 시도할 해결책:');
-                logCommand('   □ 1단계: tinySA USB 케이블을 뽑았다가 다시 꽂기');
-                logCommand('   □ 2단계: 다른 USB 케이블로 교체 (데이터 전송용 확인)');
-                logCommand('   □ 3단계: 다른 USB 포트에 연결 (USB 2.0 권장)');
-                logCommand('   □ 4단계: tinySA 전원을 껐다가 다시 켜기');
-                logCommand('   □ 5단계: 컴퓨터 재부팅 후 재시도');
-                logCommand('   □ 6단계: "포트 문제 해결" 버튼으로 상세 가이드 확인');
-
-                logCommand('');
-                logCommand('🔍 === USB 장치 확인 완료 ===');
-
-            } catch (error) {
-                logCommand(`❌ USB 장치 확인 오류: ${error.message}`);
-            }
-        }
-
-        // 포트 문제 해결 가이드
-        async function fixPortIssues() {
-            logCommand('🔧 === 포트 문제 해결 가이드 ===');
-            logCommand('');
-            logCommand('현재 상황: tinySA USB 장치가 브라우저에서 감지되지 않음');
-            logCommand('');
-
-            // Windows 전용 해결책
-            logCommand('🪟 Windows 사용자 해결 단계:');
-            logCommand('');
-            logCommand('1️⃣ 드라이버 문제 해결:');
-            logCommand('   • Win+X → 장치 관리자');
-            logCommand('   • "기타 장치" 또는 "범용 직렬 버스 컨트롤러" 확인');
-            logCommand('   • 느낌표(!) 표시된 장치 우클릭 → "드라이버 업데이트"');
-            logCommand('   • "컴퓨터에서 드라이버 찾아보기" 선택');
-            logCommand('   • "컴퓨터의 사용 가능한 드라이버 목록에서 선택" 클릭');
-            logCommand('   • "포트(COM 및 LPT)" → "USB Serial Port" 선택');
-            logCommand('');
-
-            logCommand('2️⃣ COM 포트 수동 생성:');
-            logCommand('   • 장치 관리자 → "포트(COM 및 LPT)" 우클릭');
-            logCommand('   • "레거시 하드웨어 추가" 선택');
-            logCommand('   • "하드웨어를 수동으로 설치" 선택');
-            logCommand('   • "포트(COM 및 LPT)" → "Communications Port" 선택');
-            logCommand('');
-
-            logCommand('3️⃣ USB 선택적 일시 중단 비활성화:');
-            logCommand('   • 제어판 → 전원 옵션 → 고급 전원 설정');
-            logCommand('   • "USB 설정" → "USB 선택적 일시 중단 설정"');
-            logCommand('   • "사용 안 함"으로 변경');
-            logCommand('');
-
-            // 범용 해결책
-            logCommand('🔧 범용 해결 방법:');
-            logCommand('');
-            logCommand('4️⃣ USB 케이블 및 포트 확인:');
-            logCommand('   • 충전 전용이 아닌 데이터 전송용 케이블 사용');
-            logCommand('   • USB 3.0 대신 USB 2.0 포트 사용');
-            logCommand('   • USB 허브 사용 금지, 직접 연결');
-            logCommand('   • 케이블 길이 1m 이하 권장');
-            logCommand('');
-
-            logCommand('5️⃣ tinySA 장비 확인:');
-            logCommand('   • 전원 버튼으로 완전히 껐다가 켜기');
-            logCommand('   • 화면에 정상적인 스펙트럼 표시 확인');
-            logCommand('   • USB 포트 청소 (압축공기 등)');
-            logCommand('   • 펌웨어 최신 버전 확인');
-            logCommand('');
-
-            // 브라우저별 해결책
-            logCommand('🌐 브라우저 문제 해결:');
-            logCommand('');
-            logCommand('6️⃣ Chrome/Edge 설정:');
-            logCommand('   • chrome://flags/#enable-web-serial-api 확인');
-            logCommand('   • 사이트 설정에서 시리얼 포트 권한 확인');
-            logCommand('   • 브라우저 완전 종료 후 재시작');
-            logCommand('   • 다른 브라우저에서 테스트');
-            logCommand('');
-
-            // 최종 확인 단계
-            logCommand('7️⃣ 해결 후 확인:');
-            logCommand('   • 장치 관리자에서 "USB Serial Port (COMx)" 확인');
-            logCommand('   • 포트 속성에서 보드레이트 확인 (9600 또는 115200)');
-            logCommand('   • 브라우저에서 포트 선택 시 올바른 장치 표시 확인');
-            logCommand('   • "전체 진단" 실행하여 연결 상태 확인');
-            logCommand('');
-
-            logCommand('💡 여전히 문제가 있다면:');
-            logCommand('   • tinySA 공식 소프트웨어로 연결 테스트');
-            logCommand('   • 다른 컴퓨터에서 테스트');
-            logCommand('   • tinySA 커뮤니티 포럼에서 도움 요청');
-            logCommand('');
-            logCommand('🔧 === 포트 문제 해결 가이드 완료 ===');
-        }
-
-        // 데이터 수신 테스트
-        async function testDataReception() {
-            if (!isConnected) {
-                alert('먼저 장비를 연결해주세요.');
-                return;
-            }
-
-            logCommand('📊 === 데이터 수신 테스트 시작 ===');
-
-            try {
-                // 1. 기본 상태 확인
-                logCommand('1️⃣ 기본 상태 확인...');
-                const status = await safeCommand('', 1000);
-                logCommand(`   기본 상태: "${status}"`);
-
-                // 2. 현재 설정 확인
-                logCommand('2️⃣ 현재 설정 확인...');
-                
-                // pause 명령으로 측정 일시정지
-                await safeCommand('pause');
-                await sleep(200);
-
-                // 3. 간단한 주파수 설정
-                logCommand('3️⃣ 테스트용 주파수 설정...');
-                await safeCommand('sweep start 100000000');  // 100MHz
-                await sleep(100);
-                await safeCommand('sweep stop 200000000');   // 200MHz  
-                await sleep(100);
-
-                // 4. 스캔 시작
-                logCommand('4️⃣ 테스트 스캔 시작...');
-                await safeCommand('resume');
-                await sleep(2000); // 충분한 대기
-
-                // 5. 주파수 데이터 테스트
-                logCommand('5️⃣ 주파수 데이터 요청...');
-                const freqTest = await safeCommand('frequencies', 3000);
-                
-                if (freqTest) {
-                    logCommand(`   📊 주파수 응답 (처음 200자): "${freqTest.substring(0, 200)}..."`);
-                    
-                    const freqLines = freqTest.split(/[\r\n]+/).filter(line => line.trim());
-                    logCommand(`   📊 주파수 줄 수: ${freqLines.length}`);
-                    
-                    const validFreqs = freqLines.filter(line => !isNaN(parseFloat(line.trim())));
-                    logCommand(`   📊 유효한 주파수: ${validFreqs.length}개`);
-                    
-                    if (validFreqs.length > 0) {
-                        logCommand(`   📊 첫 번째: ${parseFloat(validFreqs[0])/1e6} MHz`);
-                        logCommand(`   📊 마지막: ${parseFloat(validFreqs[validFreqs.length-1])/1e6} MHz`);
-                    }
-                } else {
-                    logCommand('   ❌ 주파수 데이터 없음');
-                }
-
-                // 6. 스펙트럼 데이터 테스트
-                logCommand('6️⃣ 스펙트럼 데이터 요청...');
-                const dataTest = await safeCommand('data 0', 3000);
-                
-                if (dataTest) {
-                    logCommand(`   📊 스펙트럼 응답 (처음 200자): "${dataTest.substring(0, 200)}..."`);
-                    
-                    const dataLines = dataTest.split(/[\r\n]+/).filter(line => line.trim());
-                    logCommand(`   📊 스펙트럼 줄 수: ${dataLines.length}`);
-                    
-                    const validData = dataLines.filter(line => !isNaN(parseFloat(line.trim())));
-                    logCommand(`   📊 유효한 데이터: ${validData.length}개`);
-                    
-                    if (validData.length > 0) {
-                        const values = validData.map(line => parseFloat(line.trim()));
-                        logCommand(`   📊 최소값: ${Math.min(...values)} dBm`);
-                        logCommand(`   📊 최대값: ${Math.max(...values)} dBm`);
-                    }
-                } else {
-                    logCommand('   ❌ 스펙트럼 데이터 없음');
-                }
-
-                // 7. 결과 분석
-                logCommand('7️⃣ 테스트 결과 분석...');
-                
-                if (freqTest && dataTest && 
-                    freqTest.length > 10 && dataTest.length > 10) {
-                    logCommand('   ✅ 데이터 수신 정상');
-                    logCommand('   💡 하드웨어 스캔이 실패한다면 파싱 로직 문제일 수 있음');
-                } else if (freqTest && freqTest.length > 10) {
-                    logCommand('   ⚠️ 주파수 데이터만 수신됨');
-                    logCommand('   💡 "data 0" 명령어 문제 또는 스캔 완료 전 요청');
-                } else if (dataTest && dataTest.length > 10) {
-                    logCommand('   ⚠️ 스펙트럼 데이터만 수신됨');
-                    logCommand('   💡 "frequencies" 명령어 문제');
-                } else {
-                    logCommand('   ❌ 데이터 수신 실패');
-                    logCommand('   💡 통신 문제 또는 잘못된 명령어');
-                }
-
-            } catch (error) {
-                logCommand(`❌ 데이터 수신 테스트 오류: ${error.message}`);
-            }
-
-            logCommand('📊 === 데이터 수신 테스트 완료 ===');
-        }
-
-        // 스펙트럼 디버그
-        async function debugSpectrum() {
-            if (!isConnected) {
-                alert('먼저 장비를 연결해주세요.');
-                return;
-            }
-
-            logCommand('🐛 === 스펙트럼 디버그 시작 ===');
-
-            try {
-                const startFreq = parseFloat(document.getElementById('startFreq').value) * 1e6;
-                const stopFreq = parseFloat(document.getElementById('stopFreq').value) * 1e6;
-
-                logCommand(`🎯 타겟 주파수: ${startFreq/1e6} - ${stopFreq/1e6} MHz`);
-
-                // 실제 하드웨어 스캔 과정 디버깅
-                logCommand('');
-                logCommand('🔄 실제 스캔 과정 재현...');
-                
-                // 정확히 같은 과정으로 실행
-                await safeCommand('pause');
-                await sleep(200);
-                
-                await safeCommand(`sweep start ${Math.floor(startFreq)}`);
-                await sleep(100);
-                await safeCommand(`sweep stop ${Math.floor(stopFreq)}`);
-                await sleep(100);
-                
-                await safeCommand('resume');
-                
-                // 점진적으로 대기 시간 늘려가며 테스트
-                const waitTimes = [500, 1000, 2000, 3000];
-                
-                for (const waitTime of waitTimes) {
-                    logCommand(`');
-                    logCommand(`⏱️ ${waitTime}ms 대기 후 데이터 확인...`);
-                    await sleep(waitTime);
-                    
-                    const freqCheck = await safeCommand('frequencies', 2000);
-                    const dataCheck = await safeCommand('data 0', 2000);
-                    
-                    const freqValid = freqCheck && freqCheck.length > 20;
-                    const dataValid = dataCheck && dataCheck.length > 20;
-                    
-                    logCommand(`   주파수 데이터: ${freqValid ? '✅ 유효' : '❌ 무효'} (${freqCheck?.length || 0}자)`);
-                    logCommand(`   스펙트럼 데이터: ${dataValid ? '✅ 유효' : '❌ 무효'} (${dataCheck?.length || 0}자)`);
-                    
-                    if (freqValid && dataValid) {
-                        logCommand(`   🎉 최적 대기시간: ${waitTime}ms`);
-                        
-                        // 간단한 파싱 테스트
-                        const freqCount = freqCheck.split(/[\r\n]+/).filter(line => 
-                            line.trim() && !isNaN(parseFloat(line.trim()))
-                        ).length;
-                        
-                        const dataCount = dataCheck.split(/[\r\n]+/).filter(line => 
-                            line.trim() && !isNaN(parseFloat(line.trim()))
-                        ).length;
-                        
-                        logCommand(`   📊 파싱 결과: 주파수 ${freqCount}개, 데이터 ${dataCount}개`);
-                        break;
-                    }
-                }
-
-                // 대체 명령어 테스트
-                logCommand('');
-                logCommand('🔄 대체 명령어 테스트...');
-                
-                const altCommands = ['data 1', 'data 2', 'trace 0', 'trace 1'];
-                for (const cmd of altCommands) {
-                    const result = await safeCommand(cmd, 2000);
-                    const valid = result && result.length > 10;
-                    logCommand(`   ${cmd}: ${valid ? '✅ 응답' : '❌ 무응답'} (${result?.length || 0}자)`);
-                }
-
-                // tinySA 상태 정보
-                logCommand('');
-                logCommand('🔍 tinySA 상태 정보...');
-                
-                const infoCommands = ['info', 'version', 'help'];
-                for (const cmd of infoCommands) {
-                    const result = await safeCommand(cmd, 2000);
-                    if (result && result.length > 5) {
-                        logCommand(`   ${cmd}: "${result.substring(0, 50)}..."`);
-                    }
-                }
-
-            } catch (error) {
-                logCommand(`❌ 스펙트럼 디버그 오류: ${error.message}`);
-            }
-
-            logCommand('🐛 === 스펙트럼 디버그 완료 ===');
-        }
-
-        // 로그 지우기
+        // Clear log
         function clearLog() {
             document.getElementById('commandLog').textContent = '';
-            logCommand('📋 로그가 지워졌습니다');
+            logCommand('📋 Log cleared');
         }
 
-        // 차트 초기화
+        // Initialize chart
         function initChart() {
             const ctx = document.getElementById('spectrumChart').getContext('2d');
             chart = new Chart(ctx, {
@@ -1935,7 +1135,7 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: '신호 강도 (dBm)',
+                        label: 'Signal Strength (dBm)',
                         data: [],
                         borderColor: '#4a6cf7',
                         backgroundColor: 'rgba(74, 108, 247, 0.1)',
@@ -1960,7 +1160,7 @@
                             display: true,
                             title: {
                                 display: true,
-                                text: '주파수 (MHz)',
+                                text: 'Frequency (MHz)',
                                 font: {
                                     size: 14,
                                     weight: 'bold'
@@ -1974,7 +1174,7 @@
                             display: true,
                             title: {
                                 display: true,
-                                text: '신호 강도 (dBm)',
+                                text: 'Signal Strength (dBm)',
                                 font: {
                                     size: 14,
                                     weight: 'bold'
@@ -1982,7 +1182,10 @@
                             },
                             grid: {
                                 color: 'rgba(0, 0, 0, 0.1)'
-                            }
+                            },
+                            // Set Y-axis to default to 0dB maximum
+                            max: 0,
+                            min: -100
                         }
                     },
                     onClick: (event, elements) => {
@@ -2000,7 +1203,7 @@
             });
         }
 
-        // 주파수 배열 생성
+        // Generate frequencies
         function generateFrequencies(start, stop, points) {
             const step = (stop - start) / (points - 1);
             const freqs = [];
@@ -2010,14 +1213,13 @@
             return freqs;
         }
 
-        // 스펙트럼 데이터 시뮬레이션
+        // Simulate spectrum
         function simulateSpectrum() {
             const startFreq = parseFloat(document.getElementById('startFreq').value);
             const stopFreq = parseFloat(document.getElementById('stopFreq').value);
             const points = parseInt(document.getElementById('scanPoints').value);
             const noiseLevel = parseFloat(document.getElementById('noiseLevel').value);
 
-            // 신호 파라미터 읽기
             const signal1Freq = parseFloat(document.getElementById('signal1Freq').value);
             const signal1Amp = parseFloat(document.getElementById('signal1Amp').value);
             const signal1Type = document.getElementById('signal1Type').value;
@@ -2033,13 +1235,11 @@
                 const freq = frequencies[i];
                 let amplitude = noiseLevel + (Math.random() - 0.5) * 10;
 
-                // 신호 1 추가
                 if (signal1Freq >= startFreq && signal1Freq <= stopFreq) {
                     const signal1Component = calculateSignalComponent(freq, signal1Freq, signal1Amp, signal1Type);
                     amplitude = combineSignals(amplitude, signal1Component);
                 }
 
-                // 신호 2 추가
                 if (signal2Freq >= startFreq && signal2Freq <= stopFreq) {
                     const signal2Component = calculateSignalComponent(freq, signal2Freq, signal2Amp, signal2Type);
                     amplitude = combineSignals(amplitude, signal2Component);
@@ -2051,10 +1251,10 @@
             return { frequencies, spectrum: spectrumData };
         }
 
-        // 신호 컴포넌트 계산
+        // Calculate signal component
         function calculateSignalComponent(currentFreq, signalFreq, signalAmp, signalType) {
             const freqDiff = Math.abs(currentFreq - signalFreq);
-            let component = -100; // 기본 낮은 값
+            let component = -100;
 
             switch (signalType) {
                 case 'sine':
@@ -2066,7 +1266,6 @@
                     if (freqDiff < 5) {
                         component = signalAmp - (freqDiff * freqDiff * 1.5);
                     }
-                    // 고조파 추가
                     for (let harmonic = 3; harmonic <= 9; harmonic += 2) {
                         const harmonicFreq = signalFreq * harmonic;
                         const harmonicDiff = Math.abs(currentFreq - harmonicFreq);
@@ -2084,7 +1283,7 @@
             return component;
         }
 
-        // 신호 결합 (dB 스케일)
+        // Combine signals
         function combineSignals(signal1_dB, signal2_dB) {
             const power1 = Math.pow(10, signal1_dB / 10);
             const power2 = Math.pow(10, signal2_dB / 10);
@@ -2092,40 +1291,36 @@
             return 10 * Math.log10(totalPower);
         }
 
-        // 스캔 시작
+        // Start scan
         async function startScan() {
-            if (isScanning) return;
+            if (isScanning || currentMode !== 'analyzer') return;
             
             isScanning = true;
-            document.getElementById('statusDisplay').textContent = '스캔 중...';
+            document.getElementById('statusDisplay').textContent = 'Scanning...';
             
             try {
                 const deviceMode = document.getElementById('deviceMode').value;
                 let data;
 
                 if (deviceMode === 'hardware' && isConnected) {
-                    // 실제 하드웨어에서 데이터 가져오기
-                    logCommand('🔗 하드웨어 모드: 실제 tinySA에서 데이터 수신 중...');
+                    logCommand('🔗 Hardware mode: Receiving data from real tinySA...');
                     data = await getHardwareSpectrum();
                     
                     if (data && data.frequencies && data.frequencies.length > 0) {
-                        logCommand(`✅ 하드웨어 데이터 수신 성공: ${data.frequencies.length}개 포인트`);
+                        logCommand(`✅ Hardware data received successfully: ${data.frequencies.length} points`);
                     } else {
-                        logCommand('⚠️ 하드웨어 데이터 수신 실패, 시뮬레이션으로 대체됨');
+                        logCommand('⚠️ Hardware data reception failed, switching to simulation');
                     }
                 } else {
-                    // 시뮬레이션 데이터 생성
-                    logCommand('시뮬레이션 스캔 시작...');
+                    logCommand('Simulation scan started...');
                     
-                    // 온도 시뮬레이션 업데이트
                     const temp = 25 + (Math.random() - 0.5) * 10;
                     document.getElementById('temperature').value = temp.toFixed(1);
                     
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // 시뮬레이션 지연
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     data = simulateSpectrum();
                 }
                 
-                // 차트 업데이트
                 frequencies = data.frequencies;
                 spectrumData = data.spectrum;
                 
@@ -2134,34 +1329,226 @@
                 chart.update();
 
                 document.getElementById('statusDisplay').textContent = 
-                    `스캔 완료 - ${data.frequencies.length}개 포인트, 범위: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
+                    `Scan complete - ${data.frequencies.length} points, range: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
                 
-                logCommand('스캔 완료');
+                logCommand('Scan complete');
                 
             } catch (error) {
-                document.getElementById('statusDisplay').textContent = `스캔 오류: ${error.message}`;
-                logCommand(`스캔 오류: ${error.message}`);
+                document.getElementById('statusDisplay').textContent = `Scan error: ${error.message}`;
+                logCommand(`Scan error: ${error.message}`);
             } finally {
                 isScanning = false;
             }
         }
 
-        // 마커 업데이트
+        // Get hardware spectrum
+        async function getHardwareSpectrum() {
+            try {
+                const startFreq = parseFloat(document.getElementById('startFreq').value) * 1e6;
+                const stopFreq = parseFloat(document.getElementById('stopFreq').value) * 1e6;
+                const points = parseInt(document.getElementById('scanPoints').value);
+
+                logCommand('📡 === Hardware spectrum measurement started ===');
+                logCommand(`Setting range: ${startFreq/1e6} - ${stopFreq/1e6} MHz, ${points} points`);
+
+                await sendCommandSafe('pause');
+                await sleep(200);
+
+                await sendCommandSafe(`sweep start ${Math.floor(startFreq)}`);
+                await sleep(100);
+                await sendCommandSafe(`sweep stop ${Math.floor(stopFreq)}`);
+                await sleep(100);
+
+                await sendCommandSafe('resume');
+                
+                const scanTime = Math.max(1000, points * 5);
+                logCommand(`   Waiting for scan completion... (${scanTime}ms)`);
+                await sleep(scanTime);
+
+                const freqResponse = await sendCommandSafe('frequencies', 5000);
+                const dataResponse = await sendCommandSafe('data 0', 5000);
+                
+                if (!freqResponse || !dataResponse) {
+                    throw new Error('Failed to get spectrum data');
+                }
+
+                // Parse data
+                const freqLines = freqResponse.split(/[\r\n]+/)
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)))
+                    .map(line => parseFloat(line));
+
+                const dataLines = dataResponse.split(/[\r\n]+/)
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)))
+                    .map(line => parseFloat(line));
+
+                const minLength = Math.min(freqLines.length, dataLines.length);
+                const freqs = freqLines.slice(0, minLength).map(freq => freq / 1e6);
+                const spectrum = dataLines.slice(0, minLength);
+
+                logCommand('📡 === Hardware spectrum measurement complete ===');
+                
+                return { frequencies: freqs, spectrum: spectrum };
+                
+            } catch (error) {
+                logCommand(`❌ Hardware scan error: ${error.message}`);
+                return simulateSpectrum();
+            }
+        }
+
+        // Signal generator functions
+        async function startGeneration() {
+            if (isGenerating || currentMode !== 'generator') return;
+            
+            const freq = parseFloat(document.getElementById('genFreq').value);
+            const level = parseFloat(document.getElementById('genLevel').value);
+            const mode = document.getElementById('genMode').value;
+            const modulation = document.getElementById('modulation').value;
+            
+            if (mode === 'off') {
+                alert('Please set output mode to ON first');
+                return;
+            }
+            
+            isGenerating = true;
+            document.getElementById('genStatus').className = 'status-indicator connecting';
+            document.getElementById('genStatus').textContent = 'Output ON';
+            
+            try {
+                if (isConnected && document.getElementById('deviceMode').value === 'hardware') {
+                    // Real hardware commands
+                    await sendCommandSafe(`sweep stop`); // Stop any sweep
+                    await sendCommandSafe(`freq ${freq * 1e6}`); // Set frequency in Hz
+                    await sendCommandSafe(`level ${level}`); // Set level
+                    await sendCommandSafe(`output on`); // Enable output
+                    
+                    if (modulation === 'sweep') {
+                        const sweepStart = parseFloat(document.getElementById('sweepStart').value) * 1e6;
+                        const sweepStop = parseFloat(document.getElementById('sweepStop').value) * 1e6;
+                        const sweepTime = parseFloat(document.getElementById('sweepTime').value);
+                        
+                        await sendCommandSafe(`sweep start ${sweepStart}`);
+                        await sendCommandSafe(`sweep stop ${sweepStop}`);
+                        await sendCommandSafe(`sweep time ${sweepTime}`);
+                        await sendCommandSafe(`sweep`);
+                    }
+                    
+                    logCommand(`✅ Hardware signal generation started: ${freq} MHz at ${level} dBm`);
+                } else {
+                    // Simulation
+                    logCommand(`🎯 Simulation: Generating ${freq} MHz at ${level} dBm (${modulation})`);
+                }
+                
+                // Update UI
+                document.getElementById('currentGenFreq').value = `${freq} MHz`;
+                document.getElementById('currentGenLevel').value = `${level} dBm`;
+                document.getElementById('genStatus').className = 'status-indicator connected';
+                
+                // Update monitoring
+                await updateMonitoring();
+                
+                document.getElementById('statusDisplay').textContent = 
+                    `Signal generation active: ${freq} MHz at ${level} dBm`;
+                
+            } catch (error) {
+                logCommand(`❌ Signal generation error: ${error.message}`);
+                isGenerating = false;
+                document.getElementById('genStatus').className = 'status-indicator disconnected';
+                document.getElementById('genStatus').textContent = 'Output OFF';
+            }
+        }
+
+        async function stopGeneration() {
+            if (!isGenerating) return;
+            
+            try {
+                if (isConnected && document.getElementById('deviceMode').value === 'hardware') {
+                    await sendCommandSafe('output off');
+                    logCommand('✅ Hardware signal generation stopped');
+                } else {
+                    logCommand('🛑 Simulation: Signal generation stopped');
+                }
+                
+                isGenerating = false;
+                document.getElementById('genStatus').className = 'status-indicator disconnected';
+                document.getElementById('genStatus').textContent = 'Output OFF';
+                document.getElementById('currentGenFreq').value = '--';
+                document.getElementById('currentGenLevel').value = '--';
+                document.getElementById('powerMonitor').value = '-- dBm';
+                document.getElementById('vswr').value = '--';
+                
+                document.getElementById('statusDisplay').textContent = 'Signal generation stopped';
+                
+            } catch (error) {
+                logCommand(`❌ Stop generation error: ${error.message}`);
+            }
+        }
+
+        async function emergencyStop() {
+            try {
+                if (isConnected) {
+                    await sendCommandSafe('output off');
+                    await sendCommandSafe('sweep stop');
+                }
+                
+                isGenerating = false;
+                document.getElementById('genStatus').className = 'status-indicator disconnected';
+                document.getElementById('genStatus').textContent = 'EMERGENCY STOP';
+                
+                logCommand('🚨 EMERGENCY STOP executed');
+                document.getElementById('statusDisplay').textContent = 'EMERGENCY STOP - All outputs disabled';
+                
+            } catch (error) {
+                logCommand(`❌ Emergency stop error: ${error.message}`);
+            }
+        }
+
+        async function updateMonitoring() {
+            try {
+                if (isConnected && document.getElementById('deviceMode').value === 'hardware') {
+                    // Real monitoring commands
+                    const powerResponse = await sendCommandSafe('power', 1000);
+                    const vswrResponse = await sendCommandSafe('vswr', 1000);
+                    
+                    if (powerResponse) {
+                        document.getElementById('powerMonitor').value = `${powerResponse} dBm`;
+                    }
+                    if (vswrResponse) {
+                        document.getElementById('vswr').value = vswrResponse;
+                    }
+                } else {
+                    // Simulation values
+                    if (isGenerating) {
+                        const level = parseFloat(document.getElementById('genLevel').value);
+                        const simulatedPower = level + (Math.random() - 0.5) * 2;
+                        const simulatedVSWR = 1.1 + Math.random() * 0.5;
+                        
+                        document.getElementById('powerMonitor').value = `${simulatedPower.toFixed(1)} dBm`;
+                        document.getElementById('vswr').value = simulatedVSWR.toFixed(2);
+                    }
+                }
+            } catch (error) {
+                logCommand(`❌ Monitoring update error: ${error.message}`);
+            }
+        }
+
+        // Update marker
         function updateMarker(frequency, amplitude) {
             document.getElementById('markerInfo').innerHTML = `
-                <strong>주파수:</strong> ${frequency.toFixed(2)} MHz<br>
-                <strong>진폭:</strong> ${amplitude.toFixed(1)} dBm
+                <strong>Frequency:</strong> ${frequency.toFixed(2)} MHz<br>
+                <strong>Amplitude:</strong> ${amplitude.toFixed(1)} dBm
             `;
         }
 
-        // CSV 다운로드
+        // Download CSV
         function downloadCSV() {
             if (frequencies.length === 0 || spectrumData.length === 0) {
-                alert('먼저 스캔을 실행해주세요.');
+                alert('Please run a scan first.');
                 return;
             }
 
-            let csvContent = "주파수(MHz),신호강도(dBm)\n";
+            let csvContent = "Frequency(MHz),Signal Strength(dBm)\n";
             for (let i = 0; i < frequencies.length; i++) {
                 csvContent += `${frequencies[i].toFixed(3)},${spectrumData[i].toFixed(2)}\n`;
             }
@@ -2177,122 +1564,101 @@
             document.body.removeChild(link);
         }
 
-        // 고급 설정 적용
+        // Apply advanced settings
         async function applyAdvancedSettings() {
             try {
-                const outputLevel = document.getElementById('outputLevel').value;
-                const outputMode = document.getElementById('outputMode').value;
                 const inputMode = document.getElementById('inputMode').value;
                 const rbw = document.getElementById('rbw').value;
 
                 if (isConnected && document.getElementById('deviceMode').value === 'hardware') {
-                    // 실제 하드웨어 설정
-                    await safeCommand(`level ${outputLevel}`);
-                    await safeCommand(`output ${outputMode}`);
-                    await safeCommand(`mode ${inputMode} input`);
+                    await sendCommandSafe(`mode ${inputMode} input`);
                     
                     if (rbw === 'auto') {
-                        await safeCommand('rbw auto');
+                        await sendCommandSafe('rbw auto');
                     } else {
-                        await safeCommand(`rbw ${rbw}`);
+                        await sendCommandSafe(`rbw ${rbw}`);
                     }
                     
-                    logCommand('하드웨어 설정 적용 완료');
+                    logCommand('Hardware settings applied');
                 } else {
-                    // 시뮬레이션 모드
-                    logCommand(`시뮬레이션: 출력 레벨 ${outputLevel}dBm, 출력 ${outputMode}, 입력 모드 ${inputMode}`);
+                    logCommand(`Simulation: Input mode ${inputMode}, RBW ${rbw}`);
                 }
                 
-                document.getElementById('statusDisplay').textContent = '고급 설정이 적용되었습니다';
+                document.getElementById('statusDisplay').textContent = 'Advanced settings applied';
                 
             } catch (error) {
-                logCommand(`설정 적용 오류: ${error.message}`);
+                logCommand(`Settings application error: ${error.message}`);
             }
         }
 
-        // 온도 측정
+        // Get temperature
         async function getTemperature() {
             try {
                 if (isConnected && document.getElementById('deviceMode').value === 'hardware') {
-                    // 실제 하드웨어에서 온도 읽기
-                    const response = await safeCommand('k'); // 온도 명령어
+                    const response = await sendCommandSafe('k');
                     if (response) {
                         const temp = parseFloat(response);
                         if (!isNaN(temp)) {
                             document.getElementById('temperature').value = temp.toFixed(1);
-                            logCommand(`하드웨어 온도: ${temp.toFixed(1)}°C`);
+                            logCommand(`Hardware temperature: ${temp.toFixed(1)}°C`);
                         } else {
-                            logCommand(`온도 파싱 오류: "${response}"`);
+                            logCommand(`Temperature parsing error: "${response}"`);
                         }
                     }
                 } else {
-                    // 시뮬레이션 온도
                     const temp = 25 + (Math.random() - 0.5) * 15;
                     document.getElementById('temperature').value = temp.toFixed(1);
-                    logCommand(`시뮬레이션 온도: ${temp.toFixed(1)}°C`);
+                    logCommand(`Simulation temperature: ${temp.toFixed(1)}°C`);
                 }
             } catch (error) {
-                logCommand(`온도 측정 오류: ${error.message}`);
+                logCommand(`Temperature measurement error: ${error.message}`);
             }
         }
 
-        // 페이지 로드 시 초기화
+        // Page load initialization
         window.addEventListener('load', function() {
             initChart();
             
-            // 브라우저 콘솔에 디버깅 정보 출력
-            console.log('=== tinySA 스펙트럼 분석기 디버깅 모드 ===');
-            console.log('UI 로그 외에 콘솔에서도 상세 정보를 확인할 수 있습니다.');
-            console.log('연결 문제 발생 시 이 콘솔 내용을 참고하세요.');
-            console.log('');
+            console.log('=== tinySA Spectrum Analyzer & Signal Generator Debug Mode ===');
+            console.log('Detailed information available in console and UI log.');
             
-            // 브라우저 지원 확인
             if (!('serial' in navigator)) {
-                document.getElementById('deviceMode').innerHTML = '<option value="simulation">시뮬레이션 모드 (Web Serial API 미지원)</option>';
-                logCommand('❌ 경고: 이 브라우저는 Web Serial API를 지원하지 않습니다.');
-                logCommand('🔧 해결방법: Chrome, Edge, Opera 등의 브라우저를 사용하세요.');
-                logCommand('📋 Chrome 버전 89 이상이 필요합니다.');
-                
+                document.getElementById('deviceMode').innerHTML = '<option value="simulation">Simulation Mode (Web Serial API not supported)</option>';
+                logCommand('❌ Warning: This browser does not support Web Serial API.');
+                logCommand('🔧 Solution: Use Chrome, Edge, Opera browsers.');
                 console.error('Web Serial API not supported. Browser:', navigator.userAgent);
             } else {
-                logCommand('✅ Web Serial API 지원됨');
-                logCommand('');
-                logCommand('📌 === tinySA 연결 가이드 ===');
-                logCommand('1️⃣ Windows 장치 관리자에서 COM 포트의 비트/초 확인');
-                logCommand('2️⃣ 확인된 보드레이트를 위 "보드레이트" 메뉴에서 선택');
-                logCommand('   • 9600 bps: 가장 일반적인 시스템 기본값');
-                logCommand('   • 115200 bps: tinySA 공장 기본값');
-                logCommand('   • 자동 감지: 확실하지 않을 때 권장');
-                logCommand('3️⃣ tinySA를 데이터 전송용 USB 케이블로 PC에 연결');
-                logCommand('4️⃣ tinySA 전원이 켜져 있고 정상 화면이 표시되는지 확인');
-                logCommand('5️⃣ "장비 모드"를 "실제 장비 연결"로 선택');
-                logCommand('6️⃣ "장비 연결" 버튼 클릭');
-                logCommand('7️⃣ 팝업에서 적절한 포트 선택 (보통 "USB Serial Device")');
-                logCommand('8️⃣ 연결 완료 후 "연결 진단"으로 상태 확인');
-                logCommand('');
-                logCommand('💡 보드레이트가 맞지 않으면 연결 실패!');
-                logCommand('🚨 연결 실패 시: "전체 진단" 및 "원시 데이터 모니터" 활용');
-                logCommand('🔧 고급 디버깅: F12 → Console 탭에서 상세 오류 확인');
-                
+                logCommand('✅ Web Serial API supported');
+                logCommand('📌 === tinySA Connection Guide ===');
+                logCommand('1️⃣ Check COM port baud rate in Windows Device Manager');
+                logCommand('2️⃣ Select correct baud rate in dropdown above');
+                logCommand('3️⃣ Connect tinySA with data USB cable');
+                logCommand('4️⃣ Ensure tinySA is powered on and displaying normal screen');
+                logCommand('5️⃣ Select "Hardware Connection" mode');
+                logCommand('6️⃣ Click "Connect" button');
+                logCommand('7️⃣ Select appropriate port in popup');
+                logCommand('8️⃣ Use "Diagnose" after connection');
                 console.log('Web Serial API supported. Ready for tinySA connection.');
             }
             
-            // 연결 해제 감지
             if ('serial' in navigator) {
                 navigator.serial.addEventListener('disconnect', (event) => {
                     if (event.target === serialPort) {
-                        updateConnectionStatus('disconnected', '🔌 장비 연결이 해제되었습니다 (USB 케이블 확인)');
+                        updateConnectionStatus('disconnected', '🔌 Device disconnected (check USB cable)');
                         console.warn('tinySA disconnected unexpectedly');
                         serialPort = null;
                         reader = null;
                         writer = null;
+                        
+                        if (isGenerating) {
+                            stopGeneration();
+                        }
                     }
                 });
                 
-                // 기존 허용된 포트 확인
                 navigator.serial.getPorts().then(ports => {
                     if (ports.length > 0) {
-                        logCommand(`💡 기존 허용된 포트 ${ports.length}개 발견됨`);
+                        logCommand(`💡 Found ${ports.length} previously authorized ports`);
                         console.log('Previously authorized ports:', ports);
                     }
                 }).catch(err => {
@@ -2300,22 +1666,28 @@
                 });
             }
             
-            // 자동 스캔 (초기 데이터)
+            // Initial scan for analyzer mode
             setTimeout(() => {
-                startScan();
+                if (currentMode === 'analyzer') {
+                    startScan();
+                }
             }, 500);
             
-            logCommand('🚀 시스템 초기화 완료');
-            console.log('tinySA Simulator initialized successfully');
+            logCommand('🚀 System initialization complete');
+            console.log('tinySA Analyzer & Generator initialized successfully');
         });
 
-        // 실시간 업데이트 (옵션)
+        // Real-time updates
         setInterval(() => {
-            if (!isScanning) {
-                // 온도 변화 시뮬레이션
+            if (!isScanning && !isGenerating) {
                 const currentTemp = parseFloat(document.getElementById('temperature').value);
                 const newTemp = currentTemp + (Math.random() - 0.5) * 0.5;
                 document.getElementById('temperature').value = newTemp.toFixed(1);
+            }
+            
+            // Update monitoring in generator mode
+            if (isGenerating && currentMode === 'generator') {
+                updateMonitoring();
             }
         }, 5000);
     </script>
