@@ -1525,7 +1525,7 @@
                 chart.data.datasets[0].data = data.spectrum;
                 
                 // Force chart update
-                chart.update('active');
+                chart.update();
                 
                 // Update status
                 const statusMsg = `Scan complete - ${data.frequencies.length} points, range: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
@@ -1839,7 +1839,7 @@
                     if (chart) {
                         chart.data.labels = testData.frequencies.map(f => f.toFixed(1));
                         chart.data.datasets[0].data = testData.spectrum;
-                        chart.update('active');
+                        chart.update();
                         
                         // Update globals
                         frequencies = testData.frequencies;
