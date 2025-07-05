@@ -387,6 +387,11 @@
                     <button class="btn btn-secondary" onclick="clearLog()">🗑️ Clear Log</button>
                 </div>
 
+                <div class="button-group" style="margin-top: 10px;">
+                    <button class="btn btn-secondary" onclick="debugChart()" id="chartDebugBtn">📈 Debug Chart</button>
+                    <button class="btn btn-secondary" onclick="testDataGeneration()">🧪 Test Data</button>
+                </div>
+
                 <hr style="margin: 20px 0; border: 1px solid #e1e8ff;">
 
                 <!-- Spectrum Analyzer Controls -->
@@ -1129,215 +1134,437 @@
 
         // Initialize chart
         function initChart() {
-            const ctx = document.getElementById('spectrumChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Signal Strength (dBm)',
-                        data: [],
-                        borderColor: '#4a6cf7',
-                        backgroundColor: 'rgba(74, 108, 247, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.2,
-                        pointRadius: 0,
-                        pointHoverRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
+            try {
+                logCommand('📈 Initializing chart...');
+                
+                const ctx = document.getElementById('spectrumChart').getContext('2d');
+                if (!ctx) {
+                    throw new Error('Cannot get canvas context');
+                }
+                
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Signal Strength (dBm)',
+                            data: [],
+                            borderColor: '#4a6cf7',
+                            backgroundColor: 'rgba(74, 108, 247, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.2,
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        }]
                     },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
                                 display: true,
-                                text: 'Frequency (MHz)',
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
+                                position: 'top'
                             }
                         },
-                        y: {
-                            display: true,
-                            title: {
+                        scales: {
+                            x: {
                                 display: true,
-                                text: 'Signal Strength (dBm)',
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
+                                title: {
+                                    display: true,
+                                    text: 'Frequency (MHz)',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
                                 }
                             },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
-                            },
-                            // Set Y-axis to default to 0dB maximum
-                            max: 0,
-                            min: -100
+                            y: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: 'Signal Strength (dBm)',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                },
+                                // Set Y-axis to default to 0dB maximum
+                                max: 0,
+                                min: -100
+                            }
+                        },
+                        onClick: (event, elements) => {
+                            if (elements.length > 0) {
+                                const elementIndex = elements[0].index;
+                                if (frequencies && frequencies[elementIndex] !== undefined && 
+                                    spectrumData && spectrumData[elementIndex] !== undefined) {
+                                    const frequency = frequencies[elementIndex];
+                                    const amplitude = spectrumData[elementIndex];
+                                    updateMarker(frequency, amplitude);
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 500
                         }
-                    },
-                    onClick: (event, elements) => {
-                        if (elements.length > 0) {
-                            const elementIndex = elements[0].index;
-                            const frequency = frequencies[elementIndex];
-                            const amplitude = spectrumData[elementIndex];
-                            updateMarker(frequency, amplitude);
-                        }
-                    },
-                    animation: {
-                        duration: 500
                     }
+                });
+                
+                logCommand('✅ Chart initialized successfully');
+                
+                // Test chart with sample data
+                testChart();
+                
+            } catch (error) {
+                logCommand(`❌ Chart initialization failed: ${error.message}`);
+                console.error('Chart init error:', error);
+            }
+        }
+
+        // Test chart functionality
+        function testChart() {
+            try {
+                logCommand('🧪 Testing chart with sample data...');
+                
+                const testFreqs = [1, 10, 50, 100, 500, 900];
+                const testData = [-90, -85, -60, -70, -80, -95];
+                
+                chart.data.labels = testFreqs.map(f => f.toString());
+                chart.data.datasets[0].data = testData;
+                chart.update();
+                
+                logCommand('✅ Chart test successful');
+                
+                // Clear test data after 2 seconds
+                setTimeout(() => {
+                    chart.data.labels = [];
+                    chart.data.datasets[0].data = [];
+                    chart.update();
+                    logCommand('🗑️ Test data cleared');
+                }, 2000);
+                
+            } catch (error) {
+                logCommand(`❌ Chart test failed: ${error.message}`);
+            }
+        }
+
+        // Debug chart status
+        function debugChart() {
+            logCommand('🔍 === Chart Debug Information ===');
+            logCommand(`Chart object exists: ${chart ? 'Yes' : 'No'}`);
+            
+            if (chart) {
+                logCommand(`Chart type: ${chart.config.type}`);
+                logCommand(`Data labels count: ${chart.data.labels ? chart.data.labels.length : 'undefined'}`);
+                logCommand(`Dataset count: ${chart.data.datasets ? chart.data.datasets.length : 'undefined'}`);
+                
+                if (chart.data.datasets && chart.data.datasets[0]) {
+                    logCommand(`Data points count: ${chart.data.datasets[0].data ? chart.data.datasets[0].data.length : 'undefined'}`);
                 }
-            });
+            }
+            
+            logCommand(`Global frequencies array: ${frequencies ? frequencies.length + ' points' : 'undefined'}`);
+            logCommand(`Global spectrum data: ${spectrumData ? spectrumData.length + ' points' : 'undefined'}`);
+            
+            const canvas = document.getElementById('spectrumChart');
+            logCommand(`Canvas element: ${canvas ? 'exists' : 'missing'}`);
+            if (canvas) {
+                logCommand(`Canvas size: ${canvas.width}x${canvas.height}`);
+            }
         }
 
         // Generate frequencies
         function generateFrequencies(start, stop, points) {
-            const step = (stop - start) / (points - 1);
-            const freqs = [];
-            for (let i = 0; i < points; i++) {
-                freqs.push(start + i * step);
+            try {
+                if (start >= stop) {
+                    throw new Error(`Invalid frequency range: start (${start}) >= stop (${stop})`);
+                }
+                if (points < 2) {
+                    throw new Error(`Invalid points count: ${points} (minimum 2)`);
+                }
+                
+                const step = (stop - start) / (points - 1);
+                const freqs = [];
+                
+                for (let i = 0; i < points; i++) {
+                    const freq = start + i * step;
+                    freqs.push(freq);
+                }
+                
+                logCommand(`   Generated ${freqs.length} frequencies from ${freqs[0].toFixed(2)} to ${freqs[freqs.length-1].toFixed(2)} MHz`);
+                
+                return freqs;
+            } catch (error) {
+                logCommand(`❌ Frequency generation error: ${error.message}`);
+                // Return fallback frequencies
+                return [start || 1, stop || 900];
             }
-            return freqs;
         }
 
         // Simulate spectrum
         function simulateSpectrum() {
-            const startFreq = parseFloat(document.getElementById('startFreq').value);
-            const stopFreq = parseFloat(document.getElementById('stopFreq').value);
-            const points = parseInt(document.getElementById('scanPoints').value);
-            const noiseLevel = parseFloat(document.getElementById('noiseLevel').value);
+            try {
+                logCommand('🎯 Generating simulation data...');
+                
+                // Get parameters with validation
+                const startFreq = parseFloat(document.getElementById('startFreq').value) || 1;
+                const stopFreq = parseFloat(document.getElementById('stopFreq').value) || 900;
+                const points = parseInt(document.getElementById('scanPoints').value) || 101;
+                const noiseLevel = parseFloat(document.getElementById('noiseLevel').value) || -80;
 
-            const signal1Freq = parseFloat(document.getElementById('signal1Freq').value);
-            const signal1Amp = parseFloat(document.getElementById('signal1Amp').value);
-            const signal1Type = document.getElementById('signal1Type').value;
+                const signal1Freq = parseFloat(document.getElementById('signal1Freq').value) || 100;
+                const signal1Amp = parseFloat(document.getElementById('signal1Amp').value) || -20;
+                const signal1Type = document.getElementById('signal1Type').value || 'sine';
 
-            const signal2Freq = parseFloat(document.getElementById('signal2Freq').value);
-            const signal2Amp = parseFloat(document.getElementById('signal2Amp').value);
-            const signal2Type = document.getElementById('signal2Type').value;
+                const signal2Freq = parseFloat(document.getElementById('signal2Freq').value) || 200;
+                const signal2Amp = parseFloat(document.getElementById('signal2Amp').value) || -30;
+                const signal2Type = document.getElementById('signal2Type').value || 'sine';
 
-            frequencies = generateFrequencies(startFreq, stopFreq, points);
-            spectrumData = [];
+                logCommand(`   Parameters: ${startFreq}-${stopFreq} MHz, ${points} points, noise ${noiseLevel} dBm`);
+                logCommand(`   Signal 1: ${signal1Freq} MHz at ${signal1Amp} dBm (${signal1Type})`);
+                logCommand(`   Signal 2: ${signal2Freq} MHz at ${signal2Amp} dBm (${signal2Type})`);
 
-            for (let i = 0; i < frequencies.length; i++) {
-                const freq = frequencies[i];
-                let amplitude = noiseLevel + (Math.random() - 0.5) * 10;
-
-                if (signal1Freq >= startFreq && signal1Freq <= stopFreq) {
-                    const signal1Component = calculateSignalComponent(freq, signal1Freq, signal1Amp, signal1Type);
-                    amplitude = combineSignals(amplitude, signal1Component);
+                // Validate parameters
+                if (startFreq >= stopFreq) {
+                    throw new Error('Start frequency must be less than stop frequency');
+                }
+                if (points < 2 || points > 10000) {
+                    throw new Error('Points must be between 2 and 10000');
                 }
 
-                if (signal2Freq >= startFreq && signal2Freq <= stopFreq) {
-                    const signal2Component = calculateSignalComponent(freq, signal2Freq, signal2Amp, signal2Type);
-                    amplitude = combineSignals(amplitude, signal2Component);
+                // Generate frequency array
+                const simFreqs = generateFrequencies(startFreq, stopFreq, points);
+                const simData = [];
+
+                logCommand(`   Generated ${simFreqs.length} frequency points`);
+
+                // Generate spectrum data
+                for (let i = 0; i < simFreqs.length; i++) {
+                    const freq = simFreqs[i];
+                    let amplitude = noiseLevel + (Math.random() - 0.5) * 10;
+
+                    // Add signal 1
+                    if (signal1Freq >= startFreq && signal1Freq <= stopFreq) {
+                        const signal1Component = calculateSignalComponent(freq, signal1Freq, signal1Amp, signal1Type);
+                        amplitude = combineSignals(amplitude, signal1Component);
+                    }
+
+                    // Add signal 2
+                    if (signal2Freq >= startFreq && signal2Freq <= stopFreq) {
+                        const signal2Component = calculateSignalComponent(freq, signal2Freq, signal2Amp, signal2Type);
+                        amplitude = combineSignals(amplitude, signal2Component);
+                    }
+
+                    simData.push(amplitude);
                 }
 
-                spectrumData.push(amplitude);
+                logCommand(`   Generated ${simData.length} amplitude points`);
+                logCommand(`   Amplitude range: ${Math.min(...simData).toFixed(1)} to ${Math.max(...simData).toFixed(1)} dBm`);
+
+                return { 
+                    frequencies: simFreqs, 
+                    spectrum: simData 
+                };
+
+            } catch (error) {
+                logCommand(`❌ Simulation error: ${error.message}`);
+                logCommand('🆘 Using emergency fallback data...');
+                
+                // Emergency fallback data
+                return {
+                    frequencies: [1, 100, 200, 500, 900],
+                    spectrum: [-90, -60, -70, -80, -95]
+                };
             }
-
-            return { frequencies, spectrum: spectrumData };
         }
 
         // Calculate signal component
         function calculateSignalComponent(currentFreq, signalFreq, signalAmp, signalType) {
-            const freqDiff = Math.abs(currentFreq - signalFreq);
-            let component = -100;
+            try {
+                const freqDiff = Math.abs(currentFreq - signalFreq);
+                let component = -100; // Default low value
 
-            switch (signalType) {
-                case 'sine':
-                    if (freqDiff < 5) {
-                        component = signalAmp - (freqDiff * freqDiff * 2);
-                    }
-                    break;
-                case 'square':
-                    if (freqDiff < 5) {
-                        component = signalAmp - (freqDiff * freqDiff * 1.5);
-                    }
-                    for (let harmonic = 3; harmonic <= 9; harmonic += 2) {
-                        const harmonicFreq = signalFreq * harmonic;
-                        const harmonicDiff = Math.abs(currentFreq - harmonicFreq);
-                        if (harmonicDiff < 2) {
-                            const harmonicAmp = signalAmp - 20 * Math.log10(harmonic) - harmonicDiff * 10;
-                            component = combineSignals(component, harmonicAmp);
+                switch (signalType) {
+                    case 'sine':
+                        if (freqDiff < 5) {
+                            component = signalAmp - (freqDiff * freqDiff * 2);
                         }
-                    }
-                    break;
-                case 'noise':
-                    component = signalAmp + (Math.random() - 0.5) * 20;
-                    break;
-            }
+                        break;
+                    case 'square':
+                        if (freqDiff < 5) {
+                            component = signalAmp - (freqDiff * freqDiff * 1.5);
+                        }
+                        // Add harmonics
+                        for (let harmonic = 3; harmonic <= 9; harmonic += 2) {
+                            const harmonicFreq = signalFreq * harmonic;
+                            const harmonicDiff = Math.abs(currentFreq - harmonicFreq);
+                            if (harmonicDiff < 2) {
+                                const harmonicAmp = signalAmp - 20 * Math.log10(harmonic) - harmonicDiff * 10;
+                                component = combineSignals(component, harmonicAmp);
+                            }
+                        }
+                        break;
+                    case 'noise':
+                        component = signalAmp + (Math.random() - 0.5) * 20;
+                        break;
+                    default:
+                        component = -100;
+                }
 
-            return component;
+                return component;
+            } catch (error) {
+                logCommand(`⚠️ Signal component calculation error: ${error.message}`);
+                return -100; // Safe fallback
+            }
         }
 
-        // Combine signals
+        // Combine signals (dB scale)
         function combineSignals(signal1_dB, signal2_dB) {
-            const power1 = Math.pow(10, signal1_dB / 10);
-            const power2 = Math.pow(10, signal2_dB / 10);
-            const totalPower = power1 + power2;
-            return 10 * Math.log10(totalPower);
+            try {
+                // Validate inputs
+                if (isNaN(signal1_dB) || isNaN(signal2_dB)) {
+                    return Math.max(signal1_dB || -100, signal2_dB || -100);
+                }
+                
+                // Prevent extreme values
+                signal1_dB = Math.max(-200, Math.min(100, signal1_dB));
+                signal2_dB = Math.max(-200, Math.min(100, signal2_dB));
+                
+                const power1 = Math.pow(10, signal1_dB / 10);
+                const power2 = Math.pow(10, signal2_dB / 10);
+                const totalPower = power1 + power2;
+                
+                if (totalPower <= 0) {
+                    return -100;
+                }
+                
+                const result = 10 * Math.log10(totalPower);
+                
+                // Validate result
+                if (isNaN(result) || !isFinite(result)) {
+                    return Math.max(signal1_dB, signal2_dB);
+                }
+                
+                return result;
+            } catch (error) {
+                logCommand(`⚠️ Signal combination error: ${error.message}`);
+                return Math.max(signal1_dB || -100, signal2_dB || -100);
+            }
         }
 
         // Start scan
         async function startScan() {
-            if (isScanning || currentMode !== 'analyzer') return;
+            if (isScanning || currentMode !== 'analyzer') {
+                logCommand('❌ Cannot start scan: ' + (isScanning ? 'Already scanning' : 'Not in analyzer mode'));
+                return;
+            }
             
             isScanning = true;
             document.getElementById('statusDisplay').textContent = 'Scanning...';
+            logCommand('🔄 Starting spectrum scan...');
             
             try {
                 const deviceMode = document.getElementById('deviceMode').value;
-                let data;
+                let data = null;
 
                 if (deviceMode === 'hardware' && isConnected) {
                     logCommand('🔗 Hardware mode: Receiving data from real tinySA...');
-                    data = await getHardwareSpectrum();
-                    
-                    if (data && data.frequencies && data.frequencies.length > 0) {
-                        logCommand(`✅ Hardware data received successfully: ${data.frequencies.length} points`);
-                    } else {
-                        logCommand('⚠️ Hardware data reception failed, switching to simulation');
+                    try {
+                        data = await getHardwareSpectrum();
+                        
+                        if (data && data.frequencies && data.frequencies.length > 0) {
+                            logCommand(`✅ Hardware data received successfully: ${data.frequencies.length} points`);
+                        } else {
+                            logCommand('⚠️ Hardware data invalid, switching to simulation');
+                            data = null;
+                        }
+                    } catch (hwError) {
+                        logCommand(`❌ Hardware scan failed: ${hwError.message}`);
+                        data = null;
                     }
-                } else {
-                    logCommand('Simulation scan started...');
+                }
+                
+                // If hardware failed or simulation mode, use simulation
+                if (!data) {
+                    logCommand('🎯 Using simulation data...');
                     
+                    // Update temperature simulation
                     const temp = 25 + (Math.random() - 0.5) * 10;
                     document.getElementById('temperature').value = temp.toFixed(1);
                     
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Simulate scan delay
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
                     data = simulateSpectrum();
+                    logCommand(`📊 Simulation generated ${data.frequencies.length} data points`);
                 }
                 
+                // Validate data before updating chart
+                if (!data || !data.frequencies || !data.spectrum || 
+                    data.frequencies.length === 0 || data.spectrum.length === 0) {
+                    throw new Error('Invalid spectrum data generated');
+                }
+                
+                // Update global variables
                 frequencies = data.frequencies;
                 spectrumData = data.spectrum;
                 
+                logCommand(`📈 Updating chart with ${frequencies.length} points`);
+                logCommand(`   Frequency range: ${frequencies[0].toFixed(2)} - ${frequencies[frequencies.length-1].toFixed(2)} MHz`);
+                logCommand(`   Amplitude range: ${Math.min(...spectrumData).toFixed(1)} - ${Math.max(...spectrumData).toFixed(1)} dBm`);
+                
+                // Update chart
                 chart.data.labels = data.frequencies.map(f => f.toFixed(1));
                 chart.data.datasets[0].data = data.spectrum;
-                chart.update();
-
-                document.getElementById('statusDisplay').textContent = 
-                    `Scan complete - ${data.frequencies.length} points, range: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
                 
-                logCommand('Scan complete');
+                // Force chart update
+                chart.update('active');
+                
+                // Update status
+                const statusMsg = `Scan complete - ${data.frequencies.length} points, range: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
+                document.getElementById('statusDisplay').textContent = statusMsg;
+                
+                logCommand('✅ Scan completed successfully');
                 
             } catch (error) {
-                document.getElementById('statusDisplay').textContent = `Scan error: ${error.message}`;
-                logCommand(`Scan error: ${error.message}`);
+                const errorMsg = `Scan error: ${error.message}`;
+                document.getElementById('statusDisplay').textContent = errorMsg;
+                logCommand(`❌ ${errorMsg}`);
+                logCommand('🔧 Debug info:');
+                logCommand(`   - Current mode: ${currentMode}`);
+                logCommand(`   - Device mode: ${document.getElementById('deviceMode').value}`);
+                logCommand(`   - Connected: ${isConnected}`);
+                logCommand(`   - Chart object: ${chart ? 'exists' : 'missing'}`);
+                
+                // Try to generate minimal fallback data
+                try {
+                    logCommand('🆘 Attempting fallback data generation...');
+                    const fallbackData = {
+                        frequencies: [1, 50, 100, 200, 500, 900],
+                        spectrum: [-90, -85, -60, -70, -80, -95]
+                    };
+                    
+                    frequencies = fallbackData.frequencies;
+                    spectrumData = fallbackData.spectrum;
+                    
+                    chart.data.labels = fallbackData.frequencies.map(f => f.toString());
+                    chart.data.datasets[0].data = fallbackData.spectrum;
+                    chart.update();
+                    
+                    logCommand('✅ Fallback data loaded successfully');
+                } catch (fallbackError) {
+                    logCommand(`❌ Fallback data failed: ${fallbackError.message}`);
+                }
             } finally {
                 isScanning = false;
+                logCommand('🏁 Scan process finished');
             }
         }
 
@@ -1591,6 +1818,54 @@
             }
         }
 
+        // Test data generation
+        function testDataGeneration() {
+            logCommand('🧪 === Testing Data Generation ===');
+            
+            try {
+                // Test basic data generation
+                logCommand('1️⃣ Testing basic data generation...');
+                const testData = simulateSpectrum();
+                
+                if (testData && testData.frequencies && testData.spectrum) {
+                    logCommand(`✅ Data generation successful:`);
+                    logCommand(`   Frequencies: ${testData.frequencies.length} points`);
+                    logCommand(`   Spectrum: ${testData.spectrum.length} points`);
+                    logCommand(`   Freq range: ${testData.frequencies[0].toFixed(2)} - ${testData.frequencies[testData.frequencies.length-1].toFixed(2)} MHz`);
+                    logCommand(`   Amplitude range: ${Math.min(...testData.spectrum).toFixed(1)} - ${Math.max(...testData.spectrum).toFixed(1)} dBm`);
+                    
+                    // Test chart update
+                    logCommand('2️⃣ Testing chart update...');
+                    if (chart) {
+                        chart.data.labels = testData.frequencies.map(f => f.toFixed(1));
+                        chart.data.datasets[0].data = testData.spectrum;
+                        chart.update('active');
+                        
+                        // Update globals
+                        frequencies = testData.frequencies;
+                        spectrumData = testData.spectrum;
+                        
+                        logCommand('✅ Chart update successful');
+                        
+                        // Update status
+                        document.getElementById('statusDisplay').textContent = 
+                            `Test data loaded - ${testData.frequencies.length} points`;
+                            
+                    } else {
+                        logCommand('❌ Chart object not available');
+                    }
+                } else {
+                    logCommand('❌ Data generation failed - invalid data structure');
+                }
+                
+            } catch (error) {
+                logCommand(`❌ Test failed: ${error.message}`);
+                console.error('Test data generation error:', error);
+            }
+            
+            logCommand('🧪 === Test Complete ===');
+        }
+
         // Get temperature
         async function getTemperature() {
             try {
@@ -1617,64 +1892,74 @@
 
         // Page load initialization
         window.addEventListener('load', function() {
-            initChart();
+            logCommand('🚀 === System Initialization Started ===');
             
-            console.log('=== tinySA Spectrum Analyzer & Signal Generator Debug Mode ===');
-            console.log('Detailed information available in console and UI log.');
-            
-            if (!('serial' in navigator)) {
-                document.getElementById('deviceMode').innerHTML = '<option value="simulation">Simulation Mode (Web Serial API not supported)</option>';
-                logCommand('❌ Warning: This browser does not support Web Serial API.');
-                logCommand('🔧 Solution: Use Chrome, Edge, Opera browsers.');
-                console.error('Web Serial API not supported. Browser:', navigator.userAgent);
-            } else {
-                logCommand('✅ Web Serial API supported');
-                logCommand('📌 === tinySA Connection Guide ===');
-                logCommand('1️⃣ Check COM port baud rate in Windows Device Manager');
-                logCommand('2️⃣ Select correct baud rate in dropdown above');
-                logCommand('3️⃣ Connect tinySA with data USB cable');
-                logCommand('4️⃣ Ensure tinySA is powered on and displaying normal screen');
-                logCommand('5️⃣ Select "Hardware Connection" mode');
-                logCommand('6️⃣ Click "Connect" button');
-                logCommand('7️⃣ Select appropriate port in popup');
-                logCommand('8️⃣ Use "Diagnose" after connection');
-                console.log('Web Serial API supported. Ready for tinySA connection.');
-            }
-            
-            if ('serial' in navigator) {
-                navigator.serial.addEventListener('disconnect', (event) => {
-                    if (event.target === serialPort) {
-                        updateConnectionStatus('disconnected', '🔌 Device disconnected (check USB cable)');
-                        console.warn('tinySA disconnected unexpectedly');
-                        serialPort = null;
-                        reader = null;
-                        writer = null;
-                        
-                        if (isGenerating) {
-                            stopGeneration();
-                        }
-                    }
-                });
+            try {
+                // Initialize chart first
+                initChart();
                 
-                navigator.serial.getPorts().then(ports => {
-                    if (ports.length > 0) {
-                        logCommand(`💡 Found ${ports.length} previously authorized ports`);
-                        console.log('Previously authorized ports:', ports);
-                    }
-                }).catch(err => {
-                    console.error('Error checking existing ports:', err);
-                });
-            }
-            
-            // Initial scan for analyzer mode
-            setTimeout(() => {
-                if (currentMode === 'analyzer') {
-                    startScan();
+                console.log('=== tinySA Spectrum Analyzer & Signal Generator Debug Mode ===');
+                console.log('Detailed information available in console and UI log.');
+                
+                if (!('serial' in navigator)) {
+                    document.getElementById('deviceMode').innerHTML = '<option value="simulation">Simulation Mode (Web Serial API not supported)</option>';
+                    logCommand('❌ Warning: This browser does not support Web Serial API.');
+                    logCommand('🔧 Solution: Use Chrome, Edge, Opera browsers.');
+                    console.error('Web Serial API not supported. Browser:', navigator.userAgent);
+                } else {
+                    logCommand('✅ Web Serial API supported');
+                    logCommand('📌 === tinySA Connection Guide ===');
+                    logCommand('1️⃣ Check COM port baud rate in Windows Device Manager');
+                    logCommand('2️⃣ Select correct baud rate in dropdown above');
+                    logCommand('3️⃣ Connect tinySA with data USB cable');
+                    logCommand('4️⃣ Ensure tinySA is powered on and displaying normal screen');
+                    logCommand('5️⃣ Select "Hardware Connection" mode');
+                    logCommand('6️⃣ Click "Connect" button');
+                    logCommand('7️⃣ Select appropriate port in popup');
+                    logCommand('8️⃣ Use "Diagnose" after connection');
+                    console.log('Web Serial API supported. Ready for tinySA connection.');
                 }
-            }, 500);
-            
-            logCommand('🚀 System initialization complete');
-            console.log('tinySA Analyzer & Generator initialized successfully');
+                
+                if ('serial' in navigator) {
+                    navigator.serial.addEventListener('disconnect', (event) => {
+                        if (event.target === serialPort) {
+                            updateConnectionStatus('disconnected', '🔌 Device disconnected (check USB cable)');
+                            console.warn('tinySA disconnected unexpectedly');
+                            serialPort = null;
+                            reader = null;
+                            writer = null;
+                            
+                            if (isGenerating) {
+                                stopGeneration();
+                            }
+                        }
+                    });
+                    
+                    navigator.serial.getPorts().then(ports => {
+                        if (ports.length > 0) {
+                            logCommand(`💡 Found ${ports.length} previously authorized ports`);
+                            console.log('Previously authorized ports:', ports);
+                        }
+                    }).catch(err => {
+                        console.error('Error checking existing ports:', err);
+                    });
+                }
+                
+                // Wait a bit for chart to be fully ready, then run initial scan
+                setTimeout(() => {
+                    if (currentMode === 'analyzer') {
+                        logCommand('🔄 Running initial scan...');
+                        startScan();
+                    }
+                }, 1000);
+                
+                logCommand('✅ System initialization complete');
+                console.log('tinySA Analyzer & Generator initialized successfully');
+                
+            } catch (error) {
+                logCommand(`❌ Initialization error: ${error.message}`);
+                console.error('Initialization error:', error);
+            }
         });
 
         // Real-time updates
