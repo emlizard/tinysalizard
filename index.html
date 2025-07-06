@@ -802,7 +802,7 @@
             
             if (canvas) {
                 logCommand(`캔버스 크기: ${canvas.width}x${canvas.height}`);
-                logCommand(`캔버스 스타일: ${canvas.style.width}x${canvas.style.height}`);
+                logCommand(`캔버스 부모 크기: ${canvas.parentElement.clientWidth}x${canvas.parentElement.clientHeight}`);
                 
                 const ctx = canvas.getContext('2d');
                 logCommand(`컨텍스트 존재: ${ctx ? 'YES' : 'NO'}`);
@@ -828,153 +828,224 @@
             logCommand('🔍 === 차트 디버그 완료 ===');
         }
 
-        // Step 2: 개선된 차트 초기화
+        // Step 2: 강화된 차트 초기화
         function initChart() {
-            try {
-                logCommand('📈 Step 2: 차트 초기화 시작...');
-                updateDebugInfo('차트 초기화 중...');
-                
-                // Chart.js 라이브러리 확인
-                if (typeof Chart === 'undefined') {
-                    throw new Error('Chart.js 라이브러리가 로드되지 않음');
-                }
-                
-                // 캔버스 요소 확인
-                const canvas = document.getElementById('spectrumChart');
-                if (!canvas) {
-                    throw new Error('스펙트럼 차트 캔버스를 찾을 수 없음');
-                }
-                
-                // 컨텍스트 가져오기
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('캔버스 컨텍스트를 가져올 수 없음');
-                }
-                
-                // 기존 차트 제거
-                if (chart) {
-                    logCommand('기존 차트 제거 중...');
-                    chart.destroy();
-                    chart = null;
-                }
-                
-                // 새 차트 생성
-                logCommand('새 차트 인스턴스 생성 중...');
-                chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: '신호 강도 (dBm)',
-                            data: [],
-                            borderColor: '#2563eb',
-                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.1,
-                            pointRadius: 1,
-                            pointHoverRadius: 5
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: {
-                                    font: {
-                                        family: 'Inter',
-                                        weight: '500'
-                                    }
-                                }
-                            }
+            return new Promise((resolve, reject) => {
+                try {
+                    logCommand('📈 Step 2: 차트 초기화 시작...');
+                    updateDebugInfo('차트 초기화 중...');
+                    
+                    // Chart.js 라이브러리 확인
+                    if (typeof Chart === 'undefined') {
+                        throw new Error('Chart.js 라이브러리가 로드되지 않음');
+                    }
+                    
+                    // 캔버스 요소 확인 및 대기
+                    const canvas = document.getElementById('spectrumChart');
+                    if (!canvas) {
+                        throw new Error('스펙트럼 차트 캔버스를 찾을 수 없음');
+                    }
+                    
+                    // 부모 컨테이너 크기 확인
+                    const container = canvas.parentElement;
+                    if (container.clientWidth === 0 || container.clientHeight === 0) {
+                        logCommand('⚠️ 컨테이너 크기가 0입니다. 100ms 후 재시도...');
+                        setTimeout(() => {
+                            initChart().then(resolve).catch(reject);
+                        }, 100);
+                        return;
+                    }
+                    
+                    // 컨텍스트 가져오기
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('캔버스 컨텍스트를 가져올 수 없음');
+                    }
+                    
+                    // 기존 차트 제거
+                    if (chart) {
+                        logCommand('기존 차트 제거 중...');
+                        chart.destroy();
+                        chart = null;
+                    }
+                    
+                    // 새 차트 생성
+                    logCommand('새 차트 인스턴스 생성 중...');
+                    chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: '신호 강도 (dBm)',
+                                data: [],
+                                borderColor: '#2563eb',
+                                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: '#2563eb',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2
+                            }]
                         },
-                        scales: {
-                            x: {
-                                display: true,
-                                title: {
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            plugins: {
+                                legend: {
                                     display: true,
-                                    text: '주파수 (MHz)',
-                                    font: {
-                                        family: 'Inter',
-                                        size: 14,
-                                        weight: '600'
+                                    position: 'top',
+                                    labels: {
+                                        font: {
+                                            family: 'Inter',
+                                            weight: '500',
+                                            size: 14
+                                        },
+                                        usePointStyle: true,
+                                        padding: 20
                                     }
                                 },
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    titleColor: '#ffffff',
+                                    bodyColor: '#ffffff',
+                                    cornerRadius: 8,
+                                    displayColors: false,
+                                    callbacks: {
+                                        title: function(context) {
+                                            return `주파수: ${context[0].label} MHz`;
+                                        },
+                                        label: function(context) {
+                                            return `신호 강도: ${context.parsed.y.toFixed(1)} dBm`;
+                                        }
+                                    }
                                 }
                             },
-                            y: {
-                                display: true,
-                                title: {
+                            scales: {
+                                x: {
                                     display: true,
-                                    text: '신호 강도 (dBm)',
-                                    font: {
-                                        family: 'Inter',
-                                        size: 14,
-                                        weight: '600'
+                                    title: {
+                                        display: true,
+                                        text: '주파수 (MHz)',
+                                        font: {
+                                            family: 'Inter',
+                                            size: 14,
+                                            weight: '600'
+                                        },
+                                        color: '#374151'
+                                    },
+                                    grid: {
+                                        color: 'rgba(0, 0, 0, 0.1)',
+                                        lineWidth: 1
+                                    },
+                                    ticks: {
+                                        font: {
+                                            family: 'Inter',
+                                            size: 12
+                                        },
+                                        color: '#6b7280',
+                                        maxTicksLimit: 10
                                     }
                                 },
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                min: -100,
-                                max: 0
-                            }
-                        },
-                        onClick: (event, elements) => {
-                            if (elements.length > 0) {
-                                const elementIndex = elements[0].index;
-                                if (frequencies && frequencies[elementIndex] !== undefined && 
-                                    spectrumData && spectrumData[elementIndex] !== undefined) {
-                                    const frequency = frequencies[elementIndex];
-                                    const amplitude = spectrumData[elementIndex];
-                                    updateMarker(frequency, amplitude);
+                                y: {
+                                    display: true,
+                                    title: {
+                                        display: true,
+                                        text: '신호 강도 (dBm)',
+                                        font: {
+                                            family: 'Inter',
+                                            size: 14,
+                                            weight: '600'
+                                        },
+                                        color: '#374151'
+                                    },
+                                    grid: {
+                                        color: 'rgba(0, 0, 0, 0.1)',
+                                        lineWidth: 1
+                                    },
+                                    ticks: {
+                                        font: {
+                                            family: 'Inter',
+                                            size: 12
+                                        },
+                                        color: '#6b7280'
+                                    },
+                                    min: -100,
+                                    max: 10
                                 }
+                            },
+                            onClick: (event, elements) => {
+                                if (elements.length > 0) {
+                                    const elementIndex = elements[0].index;
+                                    if (frequencies && frequencies[elementIndex] !== undefined && 
+                                        spectrumData && spectrumData[elementIndex] !== undefined) {
+                                        const frequency = frequencies[elementIndex];
+                                        const amplitude = spectrumData[elementIndex];
+                                        updateMarker(frequency, amplitude);
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 750,
+                                easing: 'easeInOutQuart'
                             }
-                        },
-                        animation: {
-                            duration: 300
                         }
-                    }
-                });
-                
-                logCommand('✅ Step 2 완료: 차트 초기화 성공');
-                updateDebugInfo('차트 초기화 완료');
-                
-                return true;
-                
-            } catch (error) {
-                logCommand(`❌ Step 2 실패: 차트 초기화 오류 - ${error.message}`);
-                updateDebugInfo(`차트 초기화 실패: ${error.message}`);
-                console.error('차트 초기화 오류:', error);
-                return false;
-            }
+                    });
+                    
+                    logCommand('✅ Step 2 완료: 차트 초기화 성공');
+                    updateDebugInfo('차트 초기화 완료');
+                    
+                    resolve(true);
+                    
+                } catch (error) {
+                    logCommand(`❌ Step 2 실패: 차트 초기화 오류 - ${error.message}`);
+                    updateDebugInfo(`차트 초기화 실패: ${error.message}`);
+                    console.error('차트 초기화 오류:', error);
+                    reject(error);
+                }
+            });
         }
 
-        // Step 3: 차트 테스트 함수
-        function testChart() {
+        // Step 3: 강화된 차트 테스트 함수
+        async function testChart() {
             try {
                 logCommand('🧪 Step 3: 차트 테스트 시작...');
                 updateDebugInfo('차트 테스트 실행 중...');
                 
                 if (!chart) {
                     logCommand('❌ 차트 객체가 없음. 차트 재초기화 시도...');
-                    if (!initChart()) {
-                        throw new Error('차트 초기화 실패');
-                    }
+                    await initChart();
                 }
                 
                 // 테스트 데이터 생성
                 const testFreqs = [];
                 const testData = [];
                 
-                for (let i = 0; i <= 20; i++) {
-                    const freq = 1 + (i * 44.95); // 1MHz to 900MHz
-                    const amp = -90 + Math.random() * 60 + Math.sin(i * 0.5) * 20;
+                // 더 현실적인 스펙트럼 데이터 생성
+                for (let i = 0; i <= 50; i++) {
+                    const freq = 1 + (i * 17.98); // 1MHz to 900MHz, 50 points
+                    let amp = -90 + Math.random() * 15; // 기본 노이즈 플로어
+                    
+                    // 여러 신호 추가
+                    if (Math.abs(freq - 100) < 5) {
+                        amp = Math.max(amp, -25 - Math.abs(freq - 100) * 3);
+                    }
+                    if (Math.abs(freq - 433) < 10) {
+                        amp = Math.max(amp, -35 - Math.abs(freq - 433) * 2);
+                    }
+                    if (Math.abs(freq - 868) < 8) {
+                        amp = Math.max(amp, -30 - Math.abs(freq - 868) * 4);
+                    }
+                    if (Math.abs(freq - 50) < 3) {
+                        amp = Math.max(amp, -40 - Math.abs(freq - 50) * 5);
+                    }
+                    
                     testFreqs.push(freq);
                     testData.push(amp);
                 }
@@ -983,23 +1054,31 @@
                 logCommand(`주파수 범위: ${testFreqs[0].toFixed(1)} - ${testFreqs[testFreqs.length-1].toFixed(1)} MHz`);
                 logCommand(`진폭 범위: ${Math.min(...testData).toFixed(1)} - ${Math.max(...testData).toFixed(1)} dBm`);
                 
-                // 차트 업데이트
+                // 차트 데이터 업데이트 (더 안전한 방식)
                 chart.data.labels = testFreqs.map(f => f.toFixed(1));
-                chart.data.datasets[0].data = testData;
+                chart.data.datasets[0].data = [...testData];
                 
                 // 강제 업데이트
-                chart.update('none');
+                chart.update('active');
                 
                 // 전역 변수 업데이트
-                frequencies = testFreqs;
-                spectrumData = testData;
+                frequencies = [...testFreqs];
+                spectrumData = [...testData];
                 
                 logCommand('✅ Step 3 완료: 차트 테스트 성공');
-                updateDebugInfo('차트 테스트 완료 - 데이터 표시됨');
+                updateDebugInfo('차트 테스트 완료 - 실제 데이터 표시됨');
                 
                 // 상태 업데이트
                 document.getElementById('statusDisplay').textContent = 
-                    `테스트 데이터 로드됨 - ${testFreqs.length}개 포인트`;
+                    `테스트 데이터 로드됨 - ${testFreqs.length}개 포인트 (${testFreqs[0].toFixed(1)}-${testFreqs[testFreqs.length-1].toFixed(1)} MHz)`;
+                
+                // 차트가 실제로 렌더링 되었는지 확인
+                setTimeout(() => {
+                    const canvas = document.getElementById('spectrumChart');
+                    if (canvas) {
+                        logCommand(`차트 렌더링 확인: 캔버스 크기 ${canvas.width}x${canvas.height}`);
+                    }
+                }, 100);
                 
             } catch (error) {
                 logCommand(`❌ Step 3 실패: 차트 테스트 오류 - ${error.message}`);
@@ -1360,7 +1439,7 @@
             }
         }
 
-        // Step 6: 스캔 시작
+        // Step 6: 개선된 스캔 시작
         async function startScan() {
             if (isScanning) {
                 logCommand('❌ 스캔 시작 불가: 이미 스캔 중');
@@ -1411,7 +1490,7 @@
             }
         }
 
-        // Step 7: 테스트 데이터 생성
+        // Step 7: 향상된 테스트 데이터 생성
         function generateTestData() {
             try {
                 logCommand('🎯 Step 7: 테스트 데이터 생성...');
@@ -1422,30 +1501,88 @@
                 
                 logCommand(`   매개변수: ${startFreq}-${stopFreq} MHz, ${points} 포인트`);
                 
+                if (startFreq >= stopFreq) {
+                    throw new Error('시작 주파수가 종료 주파수보다 커야 합니다');
+                }
+                
                 const step = (stopFreq - startFreq) / (points - 1);
                 const freqs = [];
                 const spectrum = [];
                 
+                // 기본 노이즈 플로어 설정
+                const baseNoiseLevel = -90;
+                const noiseVariation = 8;
+                
                 for (let i = 0; i < points; i++) {
                     const freq = startFreq + i * step;
-                    let amp = -90 + Math.random() * 20; // 기본 노이즈 레벨
                     
-                    // 몇 개의 신호 추가
-                    if (Math.abs(freq - 100) < 5) {
-                        amp = Math.max(amp, -30 - Math.abs(freq - 100) * 4);
+                    // 기본 노이즈 플로어 (랜덤 노이즈 + 주파수별 변화)
+                    let amp = baseNoiseLevel + 
+                             (Math.random() - 0.5) * noiseVariation +
+                             Math.sin(freq * 0.01) * 3; // 약간의 주파수별 변화
+                    
+                    // 여러 신호 추가 (더 현실적인 형태)
+                    
+                    // FM 방송 대역 (88-108 MHz) 시뮬레이션
+                    if (freq >= 88 && freq <= 108) {
+                        for (let fm = 88.1; fm <= 107.9; fm += 0.2) {
+                            if (Math.abs(freq - fm) < 0.1) {
+                                amp = Math.max(amp, -25 + (Math.random() - 0.5) * 10);
+                            }
+                        }
                     }
-                    if (Math.abs(freq - 433) < 10) {
-                        amp = Math.max(amp, -40 - Math.abs(freq - 433) * 2);
+                    
+                    // 휴대폰 기지국 신호 (1800-1900 MHz)
+                    if (freq >= 1800 && freq <= 1900) {
+                        amp = Math.max(amp, -45 + (Math.random() - 0.5) * 15);
                     }
-                    if (Math.abs(freq - 868) < 8) {
-                        amp = Math.max(amp, -35 - Math.abs(freq - 868) * 3);
+                    
+                    // WiFi 2.4GHz 대역
+                    if (Math.abs(freq - 2412) < 5 || Math.abs(freq - 2437) < 5 || Math.abs(freq - 2462) < 5) {
+                        amp = Math.max(amp, -35 - Math.abs(freq % 25) * 2);
                     }
+                    
+                    // 아마추어 무선 대역들
+                    const hamBands = [14.2, 21.2, 28.5, 50.1, 144.1, 432.1, 1296.1];
+                    hamBands.forEach(hamFreq => {
+                        if (Math.abs(freq - hamFreq) < 1) {
+                            amp = Math.max(amp, -40 - Math.abs(freq - hamFreq) * 15);
+                        }
+                    });
+                    
+                    // ISM 대역 (433 MHz, 868 MHz, 915 MHz)
+                    if (Math.abs(freq - 433.92) < 2) {
+                        amp = Math.max(amp, -38 - Math.abs(freq - 433.92) * 8);
+                    }
+                    if (Math.abs(freq - 868) < 3) {
+                        amp = Math.max(amp, -42 - Math.abs(freq - 868) * 6);
+                    }
+                    if (Math.abs(freq - 915) < 3) {
+                        amp = Math.max(amp, -40 - Math.abs(freq - 915) * 7);
+                    }
+                    
+                    // 랜덤 스퓨리어스 신호들
+                    if (Math.random() < 0.02) { // 2% 확률로 랜덤 신호
+                        amp = Math.max(amp, -60 + Math.random() * 20);
+                    }
+                    
+                    // 하모닉 신호들 (기본 신호의 배수 주파수에서)
+                    const fundamentals = [100, 433.92, 868];
+                    fundamentals.forEach(fund => {
+                        for (let harmonic = 2; harmonic <= 5; harmonic++) {
+                            if (Math.abs(freq - fund * harmonic) < 1) {
+                                const harmonicLevel = -45 - harmonic * 6;
+                                amp = Math.max(amp, harmonicLevel - Math.abs(freq - fund * harmonic) * 10);
+                            }
+                        }
+                    });
                     
                     freqs.push(freq);
-                    spectrum.push(amp);
+                    spectrum.push(Math.max(amp, -110)); // 최소값 제한
                 }
                 
-                logCommand(`✅ Step 7 완료: ${freqs.length}개 테스트 데이터 포인트 생성`);
+                logCommand(`✅ Step 7 완료: ${freqs.length}개 현실적인 테스트 데이터 포인트 생성`);
+                logCommand(`   신호 분포: 노이즈 플로어 ${baseNoiseLevel}dBm, 최대 신호 ${Math.max(...spectrum).toFixed(1)}dBm`);
                 
                 return { frequencies: freqs, spectrum: spectrum };
                 
@@ -1460,7 +1597,7 @@
             }
         }
 
-        // Step 8: 차트 업데이트
+        // Step 8: 강화된 차트 업데이트
         async function updateChart(data) {
             try {
                 logCommand('📈 Step 8: 차트 업데이트 시작...');
@@ -1468,9 +1605,7 @@
                 
                 if (!chart) {
                     logCommand('⚠️ 차트 객체가 없음. 재초기화...');
-                    if (!initChart()) {
-                        throw new Error('차트 초기화 실패');
-                    }
+                    await initChart();
                 }
                 
                 if (!data || !data.frequencies || !data.spectrum) {
@@ -1481,20 +1616,49 @@
                     throw new Error('주파수와 스펙트럼 데이터 길이가 다름');
                 }
                 
+                if (data.frequencies.length === 0) {
+                    throw new Error('데이터가 비어있음');
+                }
+                
                 logCommand(`   데이터 검증 완료: ${data.frequencies.length} 포인트`);
                 logCommand(`   주파수 범위: ${data.frequencies[0].toFixed(2)} - ${data.frequencies[data.frequencies.length-1].toFixed(2)} MHz`);
                 logCommand(`   진폭 범위: ${Math.min(...data.spectrum).toFixed(1)} - ${Math.max(...data.spectrum).toFixed(1)} dBm`);
                 
-                // 전역 변수 업데이트
+                // 전역 변수 업데이트 (깊은 복사)
                 frequencies = [...data.frequencies];
                 spectrumData = [...data.spectrum];
+                
+                // 차트 스케일 자동 조정
+                const minAmp = Math.min(...data.spectrum);
+                const maxAmp = Math.max(...data.spectrum);
+                const ampRange = maxAmp - minAmp;
+                const padding = ampRange * 0.1; // 10% 패딩
                 
                 // 차트 데이터 업데이트
                 chart.data.labels = data.frequencies.map(f => f.toFixed(1));
                 chart.data.datasets[0].data = [...data.spectrum];
                 
-                // 차트 업데이트 실행
-                chart.update('none');
+                // Y축 범위 자동 조정
+                chart.options.scales.y.min = Math.max(-120, minAmp - padding);
+                chart.options.scales.y.max = Math.min(20, maxAmp + padding);
+                
+                // 차트 업데이트 실행 (애니메이션과 함께)
+                logCommand('   차트 렌더링 시작...');
+                chart.update('active');
+                
+                // 렌더링 완료 대기
+                await new Promise(resolve => {
+                    // Chart.js 애니메이션 완료 이벤트 대기
+                    const onAnimationComplete = () => {
+                        chart.options.animation.onComplete = null;
+                        resolve();
+                    };
+                    
+                    chart.options.animation.onComplete = onAnimationComplete;
+                    
+                    // 안전장치: 최대 2초 대기
+                    setTimeout(resolve, 2000);
+                });
                 
                 // 상태 업데이트
                 const statusMsg = `스캔 완료 - ${data.frequencies.length}개 포인트, 범위: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
@@ -1502,6 +1666,12 @@
                 
                 updateDebugInfo('차트 업데이트 완료');
                 logCommand('✅ Step 8 완료: 차트 업데이트 성공');
+                
+                // 차트 렌더링 확인
+                const canvas = document.getElementById('spectrumChart');
+                if (canvas) {
+                    logCommand(`   최종 확인: 캔버스 크기 ${canvas.width}x${canvas.height}, 데이터 ${chart.data.datasets[0].data.length}개`);
+                }
                 
             } catch (error) {
                 logCommand(`❌ Step 8 실패: 차트 업데이트 오류 - ${error.message}`);
@@ -1600,8 +1770,8 @@
             document.body.removeChild(link);
         }
 
-        // 페이지 로드 초기화
-        window.addEventListener('load', function() {
+        // 페이지 로드 초기화 (강화된 버전)
+        window.addEventListener('load', async function() {
             logCommand('🚀 === Step 1: 시스템 초기화 시작 ===');
             
             try {
@@ -1619,14 +1789,26 @@
                 
                 logCommand('✅ Chart.js 라이브러리 로드 확인');
                 
-                // 차트 초기화
-                if (initChart()) {
-                    logCommand('✅ Step 1 완료: 차트 초기화 성공');
-                } else {
-                    logCommand('❌ Step 1 실패: 차트 초기화 실패');
-                    updateDebugInfo('차트 초기화 실패');
-                    return;
+                // DOM이 완전히 로드될 때까지 대기
+                await new Promise(resolve => {
+                    if (document.readyState === 'complete') {
+                        resolve();
+                    } else {
+                        window.addEventListener('load', resolve);
+                    }
+                });
+                
+                // 차트 컨테이너가 준비될 때까지 대기
+                const chartContainer = document.querySelector('.chart-wrapper');
+                if (chartContainer) {
+                    // 컨테이너 크기가 설정될 때까지 잠시 대기
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
+                
+                // 차트 초기화
+                logCommand('🔄 차트 초기화 시작...');
+                await initChart();
+                logCommand('✅ Step 1 완료: 차트 초기화 성공');
                 
                 // Web Serial API 확인
                 if (!('serial' in navigator)) {
@@ -1652,19 +1834,39 @@
                     card.style.animationDelay = `${index * 0.1}s`;
                 });
                 
+                // 차트 크기 조정 이벤트 리스너
+                window.addEventListener('resize', () => {
+                    if (chart) {
+                        chart.resize();
+                        logCommand('📏 차트 크기 조정됨');
+                    }
+                });
+                
                 // 초기 테스트 차트 표시
-                setTimeout(() => {
+                setTimeout(async () => {
                     logCommand('🔄 초기 테스트 차트 표시...');
-                    testChart();
-                }, 500);
+                    await testChart();
+                }, 300);
                 
                 logCommand('✅ 전체 시스템 초기화 완료');
-                updateDebugInfo('시스템 초기화 완료');
+                updateDebugInfo('시스템 초기화 완료 - 차트 준비됨');
                 
             } catch (error) {
                 logCommand(`❌ 초기화 오류: ${error.message}`);
                 updateDebugInfo(`초기화 실패: ${error.message}`);
                 console.error('초기화 오류:', error);
+                
+                // 초기화 실패시 대체 방법 시도
+                logCommand('🔄 대체 초기화 시도...');
+                setTimeout(async () => {
+                    try {
+                        await initChart();
+                        await testChart();
+                        logCommand('✅ 대체 초기화 성공');
+                    } catch (retryError) {
+                        logCommand(`❌ 대체 초기화도 실패: ${retryError.message}`);
+                    }
+                }, 1000);
             }
         });
     </script>
