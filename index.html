@@ -1033,7 +1033,7 @@
                                     displayColors: false,
                                     callbacks: {
                                         title: function(context) {
-                                            return `Frequency: ${context[0].label} MHz`;
+                                            return `Frequency: ${context[0].label} GHz`;
                                         },
                                         label: function(context) {
                                             return `Signal Strength: ${context.parsed.y.toFixed(1)} dBm`;
@@ -1046,7 +1046,7 @@
                                     display: true,
                                     title: {
                                         display: true,
-                                        text: 'Frequency (MHz)',
+                                        text: 'Frequency (GHz)',
                                         font: {
                                             family: 'Inter',
                                             size: 14,
@@ -1139,27 +1139,27 @@
                 await sleep(100);
                 await initChart();
                 
-                // 테스트 데이터 생성
+                // 테스트 데이터 생성 (GHz 범위)
                 const testFreqs = [];
                 const testData = [];
                 
-                // 더 현실적인 스펙트럼 데이터 생성
+                // GHz 범위의 현실적인 스펙트럼 데이터 생성
                 for (let i = 0; i <= 50; i++) {
-                    const freq = 1 + (i * 17.98); // 1MHz to 900MHz, 50 points
+                    const freq = 0.5 + (i * 0.05); // 0.5GHz to 3.0GHz, 50 points
                     let amp = -90 + Math.random() * 15; // 기본 노이즈 플로어
                     
-                    // 다중 신호 추가
-                    if (Math.abs(freq - 100) < 5) {
-                        amp = Math.max(amp, -25 - Math.abs(freq - 100) * 3);
+                    // GHz 대역의 특징적인 신호들 추가
+                    if (Math.abs(freq - 2.45) < 0.1) { // WiFi 2.4GHz
+                        amp = Math.max(amp, -35 - Math.abs(freq - 2.45) * 30);
                     }
-                    if (Math.abs(freq - 433) < 10) {
-                        amp = Math.max(amp, -35 - Math.abs(freq - 433) * 2);
+                    if (Math.abs(freq - 1.5) < 0.05) { // 임의의 신호
+                        amp = Math.max(amp, -40 - Math.abs(freq - 1.5) * 40);
                     }
-                    if (Math.abs(freq - 868) < 8) {
-                        amp = Math.max(amp, -30 - Math.abs(freq - 868) * 4);
+                    if (Math.abs(freq - 2.8) < 0.05) { // 레이더 대역
+                        amp = Math.max(amp, -45 - Math.abs(freq - 2.8) * 50);
                     }
-                    if (Math.abs(freq - 50) < 3) {
-                        amp = Math.max(amp, -40 - Math.abs(freq - 50) * 5);
+                    if (Math.abs(freq - 1.0) < 0.02) { // L-band 신호
+                        amp = Math.max(amp, -50 - Math.abs(freq - 1.0) * 100);
                     }
                     
                     testFreqs.push(freq);
@@ -1167,11 +1167,11 @@
                 }
                 
                 logCommand(`Test data generated: ${testFreqs.length} points`);
-                logCommand(`Frequency range: ${testFreqs[0].toFixed(1)} - ${testFreqs[testFreqs.length-1].toFixed(1)} MHz`);
+                logCommand(`Frequency range: ${testFreqs[0].toFixed(3)} - ${testFreqs[testFreqs.length-1].toFixed(3)} GHz`);
                 logCommand(`Amplitude range: ${Math.min(...testData).toFixed(1)} - ${Math.max(...testData).toFixed(1)} dBm`);
                 
                 // 차트 데이터 업데이트 (더 안전한 방법)
-                chart.data.labels = testFreqs.map(f => f.toFixed(1));
+                chart.data.labels = testFreqs.map(f => f.toFixed(3));
                 chart.data.datasets[0].data = [...testData];
                 
                 // 강제 업데이트
@@ -1186,7 +1186,7 @@
                 
                 // 상태 업데이트
                 document.getElementById('statusDisplay').textContent = 
-                    `Test data loaded - ${testFreqs.length} points (${testFreqs[0].toFixed(1)}-${testFreqs[testFreqs.length-1].toFixed(1)} MHz)`;
+                    `Test data loaded - ${testFreqs.length} points (${testFreqs[0].toFixed(3)}-${testFreqs[testFreqs.length-1].toFixed(3)} GHz)`;
                 
                 // 차트 렌더링 확인
                 setTimeout(() => {
@@ -1704,11 +1704,11 @@
             try {
                 logCommand('🎯 Test data generation...');
                 
-                const startFreq = parseFloat(document.getElementById('startFreq').value) || 1;
-                const stopFreq = parseFloat(document.getElementById('stopFreq').value) || 900;
-                const points = parseInt(document.getElementById('scanPoints').value) || 101;
+                const startFreq = parseFloat(document.getElementById('startFreq').value) || 0.5;
+                const stopFreq = parseFloat(document.getElementById('stopFreq').value) || 3.0;
+                const points = parseInt(document.getElementById('scanPoints').value) || 100;
                 
-                logCommand(`   Parameters: ${startFreq}-${stopFreq} MHz, ${points} points`);
+                logCommand(`   Parameters: ${startFreq}-${stopFreq} GHz, ${points} points`);
                 
                 if (startFreq >= stopFreq) {
                     throw new Error('Start frequency must be less than stop frequency');
@@ -1728,60 +1728,72 @@
                     // 기본 노이즈 플로어 (랜덤 노이즈 + 주파수 종속 변동)
                     let amp = baseNoiseLevel + 
                              (Math.random() - 0.5) * noiseVariation +
-                             Math.sin(freq * 0.01) * 3; // 약간의 주파수 종속 변동
+                             Math.sin(freq * 0.5) * 3; // GHz 범위에 맞춘 변동
                     
-                    // 다중 신호 추가 (더 현실적인 형태)
+                    // GHz 대역의 현실적인 신호들 추가
                     
-                    // FM 방송 대역 (88-108 MHz) 시뮬레이션
-                    if (freq >= 88 && freq <= 108) {
-                        for (let fm = 88.1; fm <= 107.9; fm += 0.2) {
-                            if (Math.abs(freq - fm) < 0.1) {
-                                amp = Math.max(amp, -25 + (Math.random() - 0.5) * 10);
+                    // WiFi 2.4GHz 대역 (2.4-2.485 GHz)
+                    if (freq >= 2.4 && freq <= 2.485) {
+                        for (let ch = 2.412; ch <= 2.472; ch += 0.022) { // WiFi 채널들
+                            if (Math.abs(freq - ch) < 0.011) {
+                                amp = Math.max(amp, -35 + (Math.random() - 0.5) * 15);
                             }
                         }
                     }
                     
-                    // 모바일 기지국 신호 (1800-1900 MHz)
-                    if (freq >= 1800 && freq <= 1900) {
-                        amp = Math.max(amp, -45 + (Math.random() - 0.5) * 15);
+                    // ISM 2.4GHz 대역의 다양한 신호들
+                    if (Math.abs(freq - 2.45) < 0.05) {
+                        amp = Math.max(amp, -40 - Math.abs(freq - 2.45) * 20);
                     }
                     
-                    // WiFi 2.4GHz 대역
-                    if (Math.abs(freq - 2412) < 5 || Math.abs(freq - 2437) < 5 || Math.abs(freq - 2462) < 5) {
-                        amp = Math.max(amp, -35 - Math.abs(freq % 25) * 2);
-                    }
-                    
-                    // 아마추어 무선 대역
-                    const hamBands = [14.2, 21.2, 28.5, 50.1, 144.1, 432.1, 1296.1];
-                    hamBands.forEach(hamFreq => {
-                        if (Math.abs(freq - hamFreq) < 1) {
-                            amp = Math.max(amp, -40 - Math.abs(freq - hamFreq) * 15);
+                    // Bluetooth (2.4 GHz ISM 대역)
+                    if (freq >= 2.402 && freq <= 2.48) {
+                        if (Math.random() < 0.1) { // 10% 확률로 Bluetooth 신호
+                            amp = Math.max(amp, -50 + Math.random() * 15);
                         }
-                    });
+                    }
                     
-                    // ISM 대역 (433 MHz, 868 MHz, 915 MHz)
-                    if (Math.abs(freq - 433.92) < 2) {
-                        amp = Math.max(amp, -38 - Math.abs(freq - 433.92) * 8);
+                    // 휴대폰 기지국 신호들
+                    // LTE Band 7 (2.5-2.69 GHz)
+                    if (freq >= 2.5 && freq <= 2.69) {
+                        amp = Math.max(amp, -55 + (Math.random() - 0.5) * 20);
                     }
-                    if (Math.abs(freq - 868) < 3) {
-                        amp = Math.max(amp, -42 - Math.abs(freq - 868) * 6);
+                    
+                    // 5G 대역 (3.4-3.8 GHz) - 만약 범위에 포함된다면
+                    if (freq >= 3.4 && freq <= 3.8) {
+                        amp = Math.max(amp, -45 + (Math.random() - 0.5) * 25);
                     }
-                    if (Math.abs(freq - 915) < 3) {
-                        amp = Math.max(amp, -40 - Math.abs(freq - 915) * 7);
+                    
+                    // 레이더 신호 (S-band: 2-4 GHz)
+                    if (freq >= 2.8 && freq <= 3.2) {
+                        if (Math.random() < 0.05) { // 5% 확률로 레이더 신호
+                            amp = Math.max(amp, -30 + Math.random() * 10);
+                        }
+                    }
+                    
+                    // 아마추어 무선 대역들
+                    if (Math.abs(freq - 1.296) < 0.01) { // 23cm 대역
+                        amp = Math.max(amp, -45 - Math.abs(freq - 1.296) * 100);
+                    }
+                    if (Math.abs(freq - 2.304) < 0.01) { // 13cm 대역
+                        amp = Math.max(amp, -40 - Math.abs(freq - 2.304) * 100);
+                    }
+                    if (Math.abs(freq - 3.4) < 0.01) { // 9cm 대역
+                        amp = Math.max(amp, -42 - Math.abs(freq - 3.4) * 100);
                     }
                     
                     // 랜덤 스퓨리어스 신호
                     if (Math.random() < 0.02) { // 2% 확률로 랜덤 신호
-                        amp = Math.max(amp, -60 + Math.random() * 20);
+                        amp = Math.max(amp, -65 + Math.random() * 25);
                     }
                     
-                    // 하모닉 신호 (기본 신호의 배수 주파수에서)
-                    const fundamentals = [100, 433.92, 868];
+                    // 하모닉 신호들 (기본 주파수의 배수)
+                    const fundamentals = [0.8, 1.2, 2.45]; // GHz
                     fundamentals.forEach(fund => {
-                        for (let harmonic = 2; harmonic <= 5; harmonic++) {
-                            if (Math.abs(freq - fund * harmonic) < 1) {
-                                const harmonicLevel = -45 - harmonic * 6;
-                                amp = Math.max(amp, harmonicLevel - Math.abs(freq - fund * harmonic) * 10);
+                        for (let harmonic = 2; harmonic <= 3; harmonic++) {
+                            if (Math.abs(freq - fund * harmonic) < 0.05) {
+                                const harmonicLevel = -55 - harmonic * 10;
+                                amp = Math.max(amp, harmonicLevel - Math.abs(freq - fund * harmonic) * 50);
                             }
                         }
                     });
@@ -1800,8 +1812,8 @@
                 
                 // 최소 폴백 데이터
                 return {
-                    frequencies: [1, 100, 200, 500, 900],
-                    spectrum: [-90, -40, -60, -50, -80]
+                    frequencies: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
+                    spectrum: [-90, -50, -60, -40, -55, -80]
                 };
             }
         }
@@ -1830,7 +1842,7 @@
                 }
                 
                 logCommand(`   Data validation complete: ${data.frequencies.length} points`);
-                logCommand(`   Frequency range: ${data.frequencies[0].toFixed(2)} - ${data.frequencies[data.frequencies.length-1].toFixed(2)} MHz`);
+                logCommand(`   Frequency range: ${data.frequencies[0].toFixed(3)} - ${data.frequencies[data.frequencies.length-1].toFixed(3)} GHz`);
                 logCommand(`   Amplitude range: ${Math.min(...data.spectrum).toFixed(1)} - ${Math.max(...data.spectrum).toFixed(1)} dBm`);
                 
                 // 글로벌 변수 업데이트 (깊은 복사)
@@ -1852,7 +1864,7 @@
                 chart.update('none');
                 
                 // 새 데이터 설정
-                chart.data.labels = data.frequencies.map(f => f.toFixed(1));
+                chart.data.labels = data.frequencies.map(f => f.toFixed(3));
                 chart.data.datasets[0].data = [...data.spectrum];
                 
                 // Y축 범위 자동 조정
@@ -1877,7 +1889,7 @@
                 });
                 
                 // 상태 업데이트
-                const statusMsg = `Scan complete - ${data.frequencies.length} points, Range: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
+                const statusMsg = `Scan complete - ${data.frequencies.length} points, Range: ${data.frequencies[0].toFixed(3)} - ${data.frequencies[data.frequencies.length-1].toFixed(3)} GHz`;
                 document.getElementById('statusDisplay').textContent = statusMsg;
                 
                 updateDebugInfo('Chart update complete');
@@ -1896,112 +1908,107 @@
             }
         }
 
-        // 제조사 코드를 참고한 완전히 새로운 하드웨어 스펙트럼 측정
+        // 제조사 코드를 정확히 따른 올바른 하드웨어 스펙트럼 측정
         async function getHardwareSpectrum() {
             try {
                 const startFreq = parseFloat(document.getElementById('startFreq').value) * 1e9; // GHz to Hz
                 const stopFreq = parseFloat(document.getElementById('stopFreq').value) * 1e9; // GHz to Hz
-                const points = parseInt(document.getElementById('scanPoints').value);
+                const totalPoints = parseInt(document.getElementById('scanPoints').value);
 
-                logCommand('📡 === Hardware Spectrum Measurement (New Method) ===');
-                logCommand(`Parameters: ${startFreq/1e9} - ${stopFreq/1e9} GHz, ${points} points`);
+                logCommand('📡 === Hardware Spectrum Measurement (Correct Protocol) ===');
+                logCommand(`Parameters: ${startFreq/1e9} - ${stopFreq/1e9} GHz, ${totalPoints} points`);
 
                 updateProgress(15, 'Pausing device...');
                 
-                // 1단계: 장비 일시정지 (제조사 코드와 동일)
+                // 1단계: 장비 일시정지
                 await sendCommand('pause');
                 await sleep(500);
 
-                updateProgress(25, 'Sending scan command...');
+                // 2단계: 세그먼트 분할 스캔 (제조사 코드와 동일)
+                const SEGMENT_LENGTH = 101; // 제조사 코드의 segment_length
+                let allSpectrumData = [];
+                let allFrequencies = [];
                 
-                // 2단계: scan 명령 전송 (제조사 코드의 핵심 명령)
-                const scanCommand = `scan ${Math.floor(startFreq)} ${Math.floor(stopFreq)} ${points}`;
-                logCommand(`   Scan command: ${scanCommand}`);
-                await sendCommand(scanCommand);
+                const freqStep = (stopFreq - startFreq) / (totalPoints - 1);
                 
-                // 스캔 시간 계산 및 대기
-                const scanTime = Math.max(3000, points * 30); // 포인트당 30ms, 최소 3초
-                const maxScanTime = Math.min(scanTime, 30000); // 최대 30초
+                // 전체 주파수 배열 생성
+                const targetFrequencies = [];
+                for (let i = 0; i < totalPoints; i++) {
+                    targetFrequencies.push(startFreq + i * freqStep);
+                }
                 
-                logCommand(`   Calculated scan time: ${maxScanTime}ms`);
+                logCommand(`   🔀 Segmented scan: ${totalPoints} points in ${Math.ceil(totalPoints / SEGMENT_LENGTH)} segments`);
                 
-                // 스캔 완료 대기 (진행률 표시)
-                const progressSteps = 10;
-                const stepTime = maxScanTime / progressSteps;
+                let remainingFreqs = [...targetFrequencies];
+                let segmentIndex = 0;
                 
-                for (let i = 0; i < progressSteps; i++) {
-                    if (scanAborted) {
-                        throw new Error('Scan aborted by user');
+                while (remainingFreqs.length > 0) {
+                    const segmentLength = Math.min(SEGMENT_LENGTH, remainingFreqs.length);
+                    const segStart = remainingFreqs[0];
+                    const segStop = remainingFreqs[segmentLength - 1];
+                    
+                    segmentIndex++;
+                    logCommand(`   📊 Segment ${segmentIndex}: ${segStart/1e9:.3f} - ${segStop/1e9:.3f} GHz (${segmentLength} points)`);
+                    
+                    updateProgress(25 + (segmentIndex - 1) * 30 / Math.ceil(totalPoints / SEGMENT_LENGTH), 
+                                 `Scanning segment ${segmentIndex}...`);
+                    
+                    // 세그먼트 스캔 실행
+                    const scanCommand = `scan ${Math.floor(segStart)} ${Math.floor(segStop)} ${segmentLength}`;
+                    await sendCommand(scanCommand);
+                    
+                    // 스캔 완료 대기 (세그먼트 크기에 비례)
+                    const segmentScanTime = Math.max(2000, segmentLength * 20); // 포인트당 20ms
+                    logCommand(`   ⏳ Waiting ${segmentScanTime}ms for segment scan completion...`);
+                    
+                    await sleep(segmentScanTime);
+                    
+                    // 스캔 완료 후 즉시 데이터 읽기 (제조사 방식)
+                    logCommand(`   📥 Reading data for segment ${segmentIndex}...`);
+                    const segmentDataResponse = await sendCommandAndFetchData('data 0', 10000);
+                    
+                    if (!segmentDataResponse) {
+                        logCommand(`   ❌ No data received for segment ${segmentIndex}`);
+                        throw new Error(`Failed to get data for segment ${segmentIndex}`);
                     }
                     
-                    const progress = 25 + (i + 1) * 4; // 25%에서 65%까지
-                    updateProgress(progress, `Scanning... ${i+1}/${progressSteps}`);
-                    await sleep(stepTime);
+                    // 세그먼트 데이터 파싱
+                    const segmentData = segmentDataResponse.split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0 && !line.includes('ch>'))
+                        .map(line => parseFloat(line))
+                        .filter(val => !isNaN(val));
+                    
+                    logCommand(`   ✅ Segment ${segmentIndex}: ${segmentData.length} data points received`);
+                    
+                    // 데이터 축적
+                    allSpectrumData.push(...segmentData);
+                    allFrequencies.push(...remainingFreqs.slice(0, segmentLength));
+                    
+                    // 다음 세그먼트 준비
+                    remainingFreqs = remainingFreqs.slice(SEGMENT_LENGTH);
                 }
 
-                updateProgress(70, 'Reading frequencies...');
+                updateProgress(80, 'Processing all data...');
                 
-                // 3단계: 주파수 리스트 읽기 (제조사 코드와 동일)
-                logCommand('   📤 Fetching frequencies...');
-                const freqResponse = await sendCommandAndFetchData('frequencies', 15000);
+                // 3단계: 데이터 검증 및 정리
+                logCommand(`   📊 Total data collected: ${allSpectrumData.length} points`);
                 
-                if (!freqResponse) {
-                    throw new Error('Failed to get frequency data');
-                }
-
-                updateProgress(80, 'Reading signal data...');
-                
-                // 4단계: 신호세기 데이터 읽기 (제조사 코드: data 0)
-                logCommand('   📤 Fetching signal data...');
-                const dataResponse = await sendCommandAndFetchData('data 0', 15000);
-                
-                if (!dataResponse) {
-                    throw new Error('Failed to get signal data');
-                }
-
-                updateProgress(85, 'Processing data...');
-                
-                // 5단계: 데이터 파싱 (제조사 코드 방식 적용)
-                logCommand('   📊 Parsing frequency data...');
-                const freqLines = freqResponse.split('\n')
-                    .map(line => line.trim())
-                    .filter(line => line.length > 0 && !line.includes('ch>'))
-                    .map(line => {
-                        const freq = parseFloat(line);
-                        return isNaN(freq) ? null : freq;
-                    })
-                    .filter(freq => freq !== null);
-
-                logCommand('   📊 Parsing signal data...');
-                const dataLines = dataResponse.split('\n')
-                    .map(line => line.trim())
-                    .filter(line => line.length > 0 && !line.includes('ch>'))
-                    .map(line => {
-                        const amplitude = parseFloat(line);
-                        return isNaN(amplitude) ? null : amplitude;
-                    })
-                    .filter(amplitude => amplitude !== null);
-
-                logCommand(`   ✅ Parsed: ${freqLines.length} frequencies, ${dataLines.length} amplitudes`);
-                
-                if (freqLines.length === 0 || dataLines.length === 0) {
-                    throw new Error('No valid data received');
-                }
-
-                // 6단계: 데이터 검증 및 정리
-                const minLength = Math.min(freqLines.length, dataLines.length);
-                
-                if (minLength < points * 0.5) { // 최소 50% 이상의 데이터 필요
-                    logCommand(`⚠️ Warning: Only received ${minLength} points, expected ${points}`);
+                if (allSpectrumData.length === 0) {
+                    throw new Error('No valid data received from any segment');
                 }
                 
-                const freqs = freqLines.slice(0, minLength).map(freq => freq / 1e9); // Hz to GHz
-                const spectrum = dataLines.slice(0, minLength);
+                // 데이터 길이 맞추기
+                const minLength = Math.min(allFrequencies.length, allSpectrumData.length);
+                const freqs = allFrequencies.slice(0, minLength).map(freq => freq / 1e9); // Hz to GHz
+                const spectrum = allSpectrumData.slice(0, minLength);
 
-                // 7단계: 장비 재개 (제조사 코드와 동일)
+                updateProgress(90, 'Resuming device...');
+                
+                // 4단계: 장비 재개
                 await sendCommand('resume');
 
-                logCommand('📡 === Hardware Measurement Complete ===');
+                logCommand('📡 === Hardware Measurement Complete (Segmented) ===');
                 logCommand(`   📊 Final result: ${freqs.length} points`);
                 logCommand(`   📈 Frequency range: ${freqs[0]?.toFixed(3)} - ${freqs[freqs.length-1]?.toFixed(3)} GHz`);
                 logCommand(`   📊 Signal range: ${Math.min(...spectrum).toFixed(1)} - ${Math.max(...spectrum).toFixed(1)} dBm`);
@@ -2027,7 +2034,7 @@
             const markerElement = document.getElementById('markerInfo');
             if (markerElement) {
                 markerElement.innerHTML = `
-                    <strong>Frequency:</strong> ${frequency.toFixed(2)} MHz<br>
+                    <strong>Frequency:</strong> ${frequency.toFixed(3)} GHz<br>
                     <strong>Amplitude:</strong> ${amplitude.toFixed(1)} dBm
                 `;
             }
@@ -2040,9 +2047,9 @@
                 return;
             }
 
-            let csvContent = "Frequency(MHz),Signal_Strength(dBm)\n";
+            let csvContent = "Frequency(GHz),Signal_Strength(dBm)\n";
             for (let i = 0; i < frequencies.length; i++) {
-                csvContent += `${frequencies[i].toFixed(3)},${spectrumData[i].toFixed(2)}\n`;
+                csvContent += `${frequencies[i].toFixed(6)},${spectrumData[i].toFixed(2)}\n`;
             }
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
