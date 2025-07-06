@@ -1,11 +1,61 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TinySA Spectrum Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --accent: #06b6d4;
+            --accent-dark: #0891b2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --bg-light: #ffffff;
+            --bg-dark: #0f172a;
+            --surface-light: #f8fafc;
+            --surface-dark: #1e293b;
+            --card-light: #ffffff;
+            --card-dark: #334155;
+            --text-primary-light: #0f172a;
+            --text-primary-dark: #f1f5f9;
+            --text-secondary-light: #64748b;
+            --text-secondary-dark: #94a3b8;
+            --border-light: #e2e8f0;
+            --border-dark: #475569;
+            --shadow-light: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-medium: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-large: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --radius: 12px;
+            --radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg: var(--bg-light);
+            --surface: var(--surface-light);
+            --card: var(--card-light);
+            --text-primary: var(--text-primary-light);
+            --text-secondary: var(--text-secondary-light);
+            --border: var(--border-light);
+            --shadow: var(--shadow-light);
+        }
+
+        [data-theme="dark"] {
+            --bg: var(--bg-dark);
+            --surface: var(--surface-dark);
+            --card: var(--card-dark);
+            --text-primary: var(--text-primary-dark);
+            --text-secondary: var(--text-secondary-dark);
+            --border: var(--border-dark);
+            --shadow: var(--shadow-medium);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,343 +63,737 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: var(--transition);
+            overflow-x: hidden;
         }
 
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                45deg,
+                rgba(37, 99, 235, 0.03) 0%,
+                rgba(6, 182, 212, 0.03) 50%,
+                rgba(16, 185, 129, 0.03) 100%
+            );
+            z-index: -1;
+            animation: gradientShift 8s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: translateX(0%) rotate(0deg); }
+            50% { transform: translateX(5%) rotate(1deg); }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: var(--transition);
+        }
+
+        [data-theme="dark"] .header {
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        /* Main Content */
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
+            padding: 2rem 1rem;
         }
 
-        .header {
+        .hero {
             text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: linear-gradient(45deg, #4a6cf7, #667eea);
-            border-radius: 15px;
-            color: white;
+            margin-bottom: 3rem;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
         }
 
-        .controls-grid {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 30px;
-            margin-bottom: 30px;
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 1rem;
         }
 
-        .control-panel {
-            background: #f8f9ff;
-            border-radius: 15px;
-            padding: 25px;
-            border: 2px solid #e1e8ff;
+        /* Card System */
+        .card {
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
         }
 
-        .control-group {
-            margin-bottom: 20px;
-        }
-
-        .control-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #4a5568;
-            font-size: 14px;
-        }
-
-        .control-group input, .control-group select {
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e1e8ff;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s ease;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transform: scaleX(0);
+            transition: var(--transition);
         }
 
-        .control-group input:focus, .control-group select:focus {
-            outline: none;
-            border-color: #4a6cf7;
-            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-large);
         }
 
-        .button-group {
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        /* Grid Layout */
+        .grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 25px;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .grid-2 {
+            grid-template-columns: 1fr 2fr;
+        }
+
+        /* Form Controls */
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .input-group-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .input-unit {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
         }
 
         .btn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-        }
-
-        .btn-primary {
-            background: linear-gradient(45deg, #4a6cf7, #667eea);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn-primary:hover {
+        .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(74, 108, 247, 0.4);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .btn-secondary {
-            background: linear-gradient(45deg, #48bb78, #38a169);
-            color: white;
+            background: linear-gradient(135deg, var(--success), var(--accent));
         }
 
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+        .btn-full {
+            width: 100%;
+            justify-content: center;
         }
 
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 1rem;
+            transition: var(--transition);
+        }
+
+        .status-indicator.connected {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 2px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-indicator.disconnected {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 2px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .status-indicator.connecting {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 2px solid rgba(245, 158, 11, 0.2);
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.scanning {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--accent);
+            border: 2px solid rgba(6, 182, 212, 0.2);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        /* Chart Container */
         .chart-container {
-            background: #ffffff;
-            border-radius: 15px;
-            padding: 20px;
-            border: 2px solid #e1e8ff;
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
         }
 
         .chart-wrapper {
             position: relative;
             height: 500px;
             width: 100%;
+            margin-top: 1rem;
         }
 
+        /* Marker Info */
         .marker-info {
-            background: linear-gradient(45deg, #ffd89b, #19547b);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(6, 182, 212, 0.1));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
         }
 
-        .marker-info h3 {
-            margin-bottom: 10px;
-        }
-
-        .status-bar {
-            background: #2d3748;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            font-family: monospace;
-        }
-
-        .input-group {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 10px;
-            align-items: end;
-        }
-
-        .unit-label {
-            background: #e1e8ff;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            color: #4a5568;
+        .marker-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
+            gap: 0.5rem;
         }
 
-        .status-indicator {
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 10px;
+        .marker-content {
+            color: var(--text-secondary);
+            font-style: italic;
         }
 
-        .status-indicator.connected {
-            background: linear-gradient(45deg, #48bb78, #38a169);
-            color: white;
-        }
-
-        .status-indicator.disconnected {
-            background: linear-gradient(45deg, #f56565, #e53e3e);
-            color: white;
-        }
-
-        .status-indicator.connecting {
-            background: linear-gradient(45deg, #ed8936, #dd6b20);
-            color: white;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-
+        /* Command Log */
         .command-log {
-            background: #2d3748;
-            color: #68d391;
-            font-family: monospace;
-            font-size: 12px;
-            padding: 15px;
-            border-radius: 8px;
-            height: 150px;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            height: 200px;
             overflow-y: auto;
-            margin-top: 15px;
-            border: 2px solid #4a5568;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: var(--success);
+            margin-top: 1rem;
         }
 
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
+        .command-log::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .command-log::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+
+        .command-log::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        /* Debug Info */
+        .debug-info {
+            background: rgba(6, 182, 212, 0.1);
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0 var(--radius) var(--radius) 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-top: 2rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Loading State */
+        .calculating {
+            opacity: 0.6;
+            pointer-events: none;
+            position: relative;
+        }
+
+        .calculating::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            border-top-color: transparent;
+            transform: translate(-50%, -50%);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 968px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 768px) {
-            .controls-grid {
-                grid-template-columns: 1fr;
+            .container {
+                padding: 1rem;
             }
             
-            .button-group {
+            .card {
+                padding: 1.5rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .input-group-row {
                 grid-template-columns: 1fr;
+            }
+
+            .input-unit {
+                justify-content: center;
             }
         }
 
-        .debug-info {
-            background: #f0f4f8;
-            border: 2px solid #bee3f8;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            font-family: monospace;
-            font-size: 12px;
+        /* Error Display */
+        .error-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card);
+            border: 2px solid var(--error);
+            border-radius: var(--radius);
+            padding: 1rem;
+            z-index: 1000;
+            animation: fadeInUp 0.3s ease-out;
+            box-shadow: var(--shadow-large);
+            max-width: 300px;
+            color: var(--error);
         }
     </style>
 </head>
 <body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="page-title">
+                <i class="fas fa-chart-line"></i>
+                TinySA Spectrum Analyzer
+            </h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+                <i class="fas fa-moon" id="theme-icon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
     <div class="container">
-        <div class="header">
-            <h1>📊 TinySA Spectrum Analyzer</h1>
-            <p>RF 신호 분석 도구</p>
+        <!-- Hero Section -->
+        <div class="hero animate-in">
+            <h1>RF Signal Analysis Tool</h1>
+            <p>Connect with TinySA for real-time spectrum analysis</p>
         </div>
 
-        <div class="controls-grid">
-            <div class="control-panel">
-                <h2>🔌 장치 연결</h2>
-                
-                <div class="control-group">
-                    <label>연결 상태</label>
-                    <div id="connectionStatus" class="status-indicator disconnected">연결 안됨</div>
-                </div>
+        <!-- Main Grid -->
+        <div class="grid grid-2">
+            <!-- Control Panel -->
+            <div class="card animate-in">
+                <h2 class="card-title">
+                    <div class="card-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    Device Control
+                </h2>
 
-                <div class="control-group">
-                    <label>보드레이트 (bps)</label>
-                    <select id="baudRate">
-                        <option value="9600" selected>9600 (시스템 기본값)</option>
-                        <option value="19200">19200</option>
-                        <option value="38400">38400</option>
-                        <option value="57600">57600</option>
-                        <option value="115200">115200 (tinySA 표준)</option>
-                        <option value="230400">230400</option>
-                    </select>
-                </div>
-
-                <div class="button-group">
-                    <button class="btn btn-primary" id="connectBtn" onclick="connectDevice()">🔌 연결</button>
-                    <button class="btn btn-secondary" id="disconnectBtn" onclick="disconnectDevice()" disabled>❌ 연결 해제</button>
-                </div>
-
-                <div class="button-group" style="margin-top: 10px;">
-                    <button class="btn btn-secondary" onclick="diagnoseConnection()" id="diagnoseBtn" disabled>🔍 진단</button>
-                    <button class="btn btn-secondary" onclick="clearLog()">🗑️ 로그 지우기</button>
-                </div>
-
-                <hr style="margin: 20px 0; border: 1px solid #e1e8ff;">
-
-                <h2>📡 주파수 설정</h2>
-                
-                <div class="control-group">
-                    <label>시작 주파수</label>
-                    <div class="input-group">
-                        <input type="number" id="startFreq" value="1" step="0.1">
-                        <span class="unit-label">MHz</span>
+                <!-- Connection Status -->
+                <div class="input-group">
+                    <label class="input-label">Connection Status</label>
+                    <div id="connectionStatus" class="status-indicator disconnected">
+                        <i class="fas fa-circle"></i> Disconnected
                     </div>
                 </div>
 
-                <div class="control-group">
-                    <label>종료 주파수</label>
-                    <div class="input-group">
-                        <input type="number" id="stopFreq" value="900" step="0.1">
-                        <span class="unit-label">MHz</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>스캔 포인트</label>
-                    <select id="scanPoints">
-                        <option value="101">101</option>
-                        <option value="201">201</option>
-                        <option value="301">301</option>
-                        <option value="501">501</option>
-                        <option value="801">801</option>
+                <!-- Baud Rate -->
+                <div class="input-group">
+                    <label class="input-label">Baud Rate</label>
+                    <select id="baudRate" class="input-field">
+                        <option value="9600" selected>9600 bps (System Default)</option>
+                        <option value="19200">19200 bps</option>
+                        <option value="38400">38400 bps</option>
+                        <option value="57600">57600 bps</option>
+                        <option value="115200">115200 bps (tinySA Standard)</option>
+                        <option value="230400">230400 bps</option>
                     </select>
                 </div>
 
-                <div class="button-group">
-                    <button class="btn btn-primary" onclick="startScan()">🔍 스캔 시작</button>
-                    <button class="btn btn-secondary" onclick="downloadCSV()">💾 CSV 저장</button>
+                <!-- Connection Buttons -->
+                <div class="btn-grid">
+                    <button class="btn btn-full" id="connectBtn" onclick="connectDevice()">
+                        <i class="fas fa-plug"></i> Connect
+                    </button>
+                    <button class="btn btn-secondary btn-full" id="disconnectBtn" onclick="disconnectDevice()" disabled>
+                        <i class="fas fa-times"></i> Disconnect
+                    </button>
                 </div>
 
-                <div class="button-group" style="margin-top: 10px;">
-                    <button class="btn btn-secondary" onclick="testChart()">🧪 차트 테스트</button>
-                    <button class="btn btn-secondary" onclick="debugChart()">🔧 차트 디버그</button>
+                <div class="btn-grid">
+                    <button class="btn btn-secondary btn-full" onclick="diagnoseConnection()" id="diagnoseBtn" disabled>
+                        <i class="fas fa-stethoscope"></i> Diagnose
+                    </button>
+                    <button class="btn btn-secondary btn-full" onclick="clearLog()">
+                        <i class="fas fa-trash"></i> Clear Log
+                    </button>
                 </div>
 
+                <hr style="margin: 2rem 0; border: none; height: 1px; background: var(--border);">
+
+                <!-- Frequency Settings -->
+                <h3 class="card-title" style="font-size: 1.25rem; margin-bottom: 1rem;">
+                    <div class="card-icon" style="width: 24px; height: 24px; font-size: 0.8rem;">
+                        <i class="fas fa-wave-square"></i>
+                    </div>
+                    Frequency Settings
+                </h3>
+
+                <div class="input-group">
+                    <label class="input-label">Start Frequency</label>
+                    <div class="input-group-row">
+                        <input type="number" id="startFreq" class="input-field" value="1" step="0.1">
+                        <div class="input-unit">MHz</div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Stop Frequency</label>
+                    <div class="input-group-row">
+                        <input type="number" id="stopFreq" class="input-field" value="900" step="0.1">
+                        <div class="input-unit">MHz</div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Scan Points</label>
+                    <select id="scanPoints" class="input-field">
+                        <option value="101">101 Points</option>
+                        <option value="201">201 Points</option>
+                        <option value="301">301 Points</option>
+                        <option value="501">501 Points</option>
+                        <option value="801">801 Points</option>
+                    </select>
+                </div>
+
+                <!-- Progress Bar -->
+                <div id="progressContainer" class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <div id="progressText" class="progress-text">Initializing scan...</div>
+                </div>
+
+                <!-- Scan Buttons -->
+                <div class="btn-grid">
+                    <button class="btn btn-full" onclick="startScan()" id="scanBtn">
+                        <i class="fas fa-search"></i> Start Scan
+                    </button>
+                    <button class="btn btn-secondary btn-full" onclick="downloadCSV()">
+                        <i class="fas fa-download"></i> Save CSV
+                    </button>
+                </div>
+
+                <div class="btn-grid">
+                    <button class="btn btn-secondary btn-full" onclick="testChart()">
+                        <i class="fas fa-vial"></i> Test Chart
+                    </button>
+                    <button class="btn btn-secondary btn-full" onclick="debugChart()">
+                        <i class="fas fa-bug"></i> Debug Chart
+                    </button>
+                </div>
+
+                <!-- Marker Info -->
                 <div class="marker-info">
-                    <h3>📍 마커 정보</h3>
-                    <div id="markerInfo">차트를 클릭하여 마커를 설정하세요</div>
+                    <h3 class="marker-title">
+                        <i class="fas fa-crosshairs"></i>
+                        Marker Information
+                    </h3>
+                    <div id="markerInfo" class="marker-content">
+                        Click on the chart to set marker
+                    </div>
                 </div>
 
-                <div class="control-group">
-                    <label>명령 로그</label>
-                    <div id="commandLog" class="command-log">시스템 준비됨...\n</div>
+                <!-- Command Log -->
+                <div class="input-group">
+                    <label class="input-label">Command Log</label>
+                    <div id="commandLog" class="command-log">System ready...\n</div>
                 </div>
 
+                <!-- Debug Info -->
                 <div class="debug-info" id="debugInfo">
-                    차트 상태: 준비 중...
+                    Chart status: Ready...
                 </div>
             </div>
 
-            <div class="chart-container">
-                <h2>📊 스펙트럼 분석</h2>
+            <!-- Chart Panel -->
+            <div class="chart-container animate-in">
+                <h2 class="card-title">
+                    <div class="card-icon">
+                        <i class="fas fa-chart-area"></i>
+                    </div>
+                    Spectrum Analysis
+                </h2>
                 <div class="chart-wrapper">
                     <canvas id="spectrumChart"></canvas>
                 </div>
             </div>
         </div>
 
+        <!-- Status Bar -->
         <div class="status-bar">
-            <div id="statusDisplay">시스템 준비됨 - 스캔을 시작하세요</div>
+            <div id="statusDisplay">System ready - Start scanning</div>
         </div>
     </div>
 
@@ -362,12 +806,50 @@
         let reader = null;
         let writer = null;
         let isConnected = false;
+        let scanAborted = false;
 
-        // TinySA 장치 식별자
+        // TinySA Device Identifiers
         const TINYSA_VID = 0x0483;
         const TINYSA_PID = 0x5740;
 
-        // Step 1: 디버그 헬퍼 함수들
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            html.setAttribute('data-theme', newTheme);
+            
+            const icon = document.getElementById('theme-icon');
+            icon.className = newTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+            
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Initialize theme from localStorage
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            const icon = document.getElementById('theme-icon');
+            icon.className = savedTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        }
+
+        // Progress management
+        function showProgress() {
+            document.getElementById('progressContainer').classList.add('show');
+        }
+
+        function hideProgress() {
+            document.getElementById('progressContainer').classList.remove('show');
+        }
+
+        function updateProgress(percentage, text) {
+            document.getElementById('progressFill').style.width = `${percentage}%`;
+            document.getElementById('progressText').textContent = text;
+        }
+
+        // Step 1: Debug helper functions
         function updateDebugInfo(message) {
             const debugElement = document.getElementById('debugInfo');
             if (debugElement) {
@@ -377,224 +859,311 @@
         }
 
         function debugChart() {
-            logCommand('🔍 === 차트 디버그 시작 ===');
+            logCommand('🔍 === Chart Debug Start ===');
             
-            updateDebugInfo('차트 디버그 실행 중...');
+            updateDebugInfo('Running chart debug...');
             
-            // 기본 정보
-            logCommand(`차트 객체 존재: ${chart ? 'YES' : 'NO'}`);
-            logCommand(`Chart.js 라이브러리: ${typeof Chart !== 'undefined' ? 'YES' : 'NO'}`);
+            // Basic information
+            logCommand(`Chart object exists: ${chart ? 'YES' : 'NO'}`);
+            logCommand(`Chart.js library: ${typeof Chart !== 'undefined' ? 'YES' : 'NO'}`);
             
-            // 캔버스 정보
+            // Canvas information
             const canvas = document.getElementById('spectrumChart');
-            logCommand(`캔버스 요소 존재: ${canvas ? 'YES' : 'NO'}`);
+            logCommand(`Canvas element exists: ${canvas ? 'YES' : 'NO'}`);
             
             if (canvas) {
-                logCommand(`캔버스 크기: ${canvas.width}x${canvas.height}`);
-                logCommand(`캔버스 스타일: ${canvas.style.width}x${canvas.style.height}`);
+                logCommand(`Canvas size: ${canvas.width}x${canvas.height}`);
+                logCommand(`Canvas parent size: ${canvas.parentElement.clientWidth}x${canvas.parentElement.clientHeight}`);
                 
                 const ctx = canvas.getContext('2d');
-                logCommand(`컨텍스트 존재: ${ctx ? 'YES' : 'NO'}`);
+                logCommand(`Context exists: ${ctx ? 'YES' : 'NO'}`);
             }
             
-            // 차트 상태
+            // Chart status
             if (chart) {
-                logCommand(`차트 타입: ${chart.config.type}`);
-                logCommand(`데이터셋 수: ${chart.data.datasets ? chart.data.datasets.length : 0}`);
-                logCommand(`라벨 수: ${chart.data.labels ? chart.data.labels.length : 0}`);
+                logCommand(`Chart type: ${chart.config.type}`);
+                logCommand(`Dataset count: ${chart.data.datasets ? chart.data.datasets.length : 0}`);
+                logCommand(`Label count: ${chart.data.labels ? chart.data.labels.length : 0}`);
                 
                 if (chart.data.datasets && chart.data.datasets[0]) {
-                    logCommand(`데이터 포인트 수: ${chart.data.datasets[0].data ? chart.data.datasets[0].data.length : 0}`);
+                    logCommand(`Data point count: ${chart.data.datasets[0].data ? chart.data.datasets[0].data.length : 0}`);
                 }
             }
             
-            // 전역 데이터
-            logCommand(`전역 주파수 배열: ${frequencies ? frequencies.length + ' 항목' : 'undefined'}`);
-            logCommand(`전역 스펙트럼 배열: ${spectrumData ? spectrumData.length + ' 항목' : 'undefined'}`);
+            // Global data
+            logCommand(`Global frequency array: ${frequencies ? frequencies.length + ' items' : 'undefined'}`);
+            logCommand(`Global spectrum array: ${spectrumData ? spectrumData.length + ' items' : 'undefined'}`);
             
-            updateDebugInfo(`차트 객체: ${chart ? '존재' : '없음'}, 캔버스: ${canvas ? '존재' : '없음'}`);
+            updateDebugInfo(`Chart object: ${chart ? 'exists' : 'missing'}, Canvas: ${canvas ? 'exists' : 'missing'}`);
             
-            logCommand('🔍 === 차트 디버그 완료 ===');
+            logCommand('🔍 === Chart Debug Complete ===');
         }
 
-        // Step 2: 개선된 차트 초기화
+        // Step 2: Enhanced chart initialization
         function initChart() {
-            try {
-                logCommand('📈 Step 2: 차트 초기화 시작...');
-                updateDebugInfo('차트 초기화 중...');
-                
-                // Chart.js 라이브러리 확인
-                if (typeof Chart === 'undefined') {
-                    throw new Error('Chart.js 라이브러리가 로드되지 않음');
-                }
-                
-                // 캔버스 요소 확인
-                const canvas = document.getElementById('spectrumChart');
-                if (!canvas) {
-                    throw new Error('스펙트럼 차트 캔버스를 찾을 수 없음');
-                }
-                
-                // 컨텍스트 가져오기
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('캔버스 컨텍스트를 가져올 수 없음');
-                }
-                
-                // 기존 차트 제거
-                if (chart) {
-                    logCommand('기존 차트 제거 중...');
-                    chart.destroy();
-                    chart = null;
-                }
-                
-                // 새 차트 생성
-                logCommand('새 차트 인스턴스 생성 중...');
-                chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: '신호 강도 (dBm)',
-                            data: [],
-                            borderColor: '#4a6cf7',
-                            backgroundColor: 'rgba(74, 108, 247, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.1,
-                            pointRadius: 1,
-                            pointHoverRadius: 5
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top'
-                            }
+            return new Promise((resolve, reject) => {
+                try {
+                    logCommand('📈 Step 2: Chart initialization starting...');
+                    updateDebugInfo('Initializing chart...');
+                    
+                    // Check Chart.js library
+                    if (typeof Chart === 'undefined') {
+                        throw new Error('Chart.js library not loaded');
+                    }
+                    
+                    // Check and wait for canvas element
+                    const canvas = document.getElementById('spectrumChart');
+                    if (!canvas) {
+                        throw new Error('Spectrum chart canvas not found');
+                    }
+                    
+                    // Check parent container size
+                    const container = canvas.parentElement;
+                    if (container.clientWidth === 0 || container.clientHeight === 0) {
+                        logCommand('⚠️ Container size is 0. Retrying in 100ms...');
+                        setTimeout(() => {
+                            initChart().then(resolve).catch(reject);
+                        }, 100);
+                        return;
+                    }
+                    
+                    // Get context
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('Cannot get canvas context');
+                    }
+                    
+                    // Destroy existing chart
+                    if (chart) {
+                        logCommand('Destroying existing chart...');
+                        chart.destroy();
+                        chart = null;
+                    }
+                    
+                    // Create new chart
+                    logCommand('Creating new chart instance...');
+                    chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: 'Signal Strength (dBm)',
+                                data: [],
+                                borderColor: '#2563eb',
+                                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: '#2563eb',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2
+                            }]
                         },
-                        scales: {
-                            x: {
-                                display: true,
-                                title: {
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            plugins: {
+                                legend: {
                                     display: true,
-                                    text: '주파수 (MHz)',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
+                                    position: 'top',
+                                    labels: {
+                                        font: {
+                                            family: 'Inter',
+                                            weight: '500',
+                                            size: 14
+                                        },
+                                        usePointStyle: true,
+                                        padding: 20
                                     }
                                 },
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    titleColor: '#ffffff',
+                                    bodyColor: '#ffffff',
+                                    cornerRadius: 8,
+                                    displayColors: false,
+                                    callbacks: {
+                                        title: function(context) {
+                                            return `Frequency: ${context[0].label} MHz`;
+                                        },
+                                        label: function(context) {
+                                            return `Signal Strength: ${context.parsed.y.toFixed(1)} dBm`;
+                                        }
+                                    }
                                 }
                             },
-                            y: {
-                                display: true,
-                                title: {
+                            scales: {
+                                x: {
                                     display: true,
-                                    text: '신호 강도 (dBm)',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
+                                    title: {
+                                        display: true,
+                                        text: 'Frequency (MHz)',
+                                        font: {
+                                            family: 'Inter',
+                                            size: 14,
+                                            weight: '600'
+                                        },
+                                        color: '#374151'
+                                    },
+                                    grid: {
+                                        color: 'rgba(0, 0, 0, 0.1)',
+                                        lineWidth: 1
+                                    },
+                                    ticks: {
+                                        font: {
+                                            family: 'Inter',
+                                            size: 12
+                                        },
+                                        color: '#6b7280',
+                                        maxTicksLimit: 10
                                     }
                                 },
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                min: -100,
-                                max: 0
-                            }
-                        },
-                        onClick: (event, elements) => {
-                            if (elements.length > 0) {
-                                const elementIndex = elements[0].index;
-                                if (frequencies && frequencies[elementIndex] !== undefined && 
-                                    spectrumData && spectrumData[elementIndex] !== undefined) {
-                                    const frequency = frequencies[elementIndex];
-                                    const amplitude = spectrumData[elementIndex];
-                                    updateMarker(frequency, amplitude);
+                                y: {
+                                    display: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Signal Strength (dBm)',
+                                        font: {
+                                            family: 'Inter',
+                                            size: 14,
+                                            weight: '600'
+                                        },
+                                        color: '#374151'
+                                    },
+                                    grid: {
+                                        color: 'rgba(0, 0, 0, 0.1)',
+                                        lineWidth: 1
+                                    },
+                                    ticks: {
+                                        font: {
+                                            family: 'Inter',
+                                            size: 12
+                                        },
+                                        color: '#6b7280'
+                                    },
+                                    min: -100,
+                                    max: 10
                                 }
+                            },
+                            onClick: (event, elements) => {
+                                if (elements.length > 0) {
+                                    const elementIndex = elements[0].index;
+                                    if (frequencies && frequencies[elementIndex] !== undefined && 
+                                        spectrumData && spectrumData[elementIndex] !== undefined) {
+                                        const frequency = frequencies[elementIndex];
+                                        const amplitude = spectrumData[elementIndex];
+                                        updateMarker(frequency, amplitude);
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 750,
+                                easing: 'easeInOutQuart'
                             }
-                        },
-                        animation: {
-                            duration: 300
                         }
-                    }
-                });
-                
-                logCommand('✅ Step 2 완료: 차트 초기화 성공');
-                updateDebugInfo('차트 초기화 완료');
-                
-                return true;
-                
-            } catch (error) {
-                logCommand(`❌ Step 2 실패: 차트 초기화 오류 - ${error.message}`);
-                updateDebugInfo(`차트 초기화 실패: ${error.message}`);
-                console.error('차트 초기화 오류:', error);
-                return false;
-            }
+                    });
+                    
+                    logCommand('✅ Step 2 Complete: Chart initialization successful');
+                    updateDebugInfo('Chart initialization complete');
+                    
+                    resolve(true);
+                    
+                } catch (error) {
+                    logCommand(`❌ Step 2 Failed: Chart initialization error - ${error.message}`);
+                    updateDebugInfo(`Chart initialization failed: ${error.message}`);
+                    console.error('Chart initialization error:', error);
+                    reject(error);
+                }
+            });
         }
 
-        // Step 3: 차트 테스트 함수
-        function testChart() {
+        // Step 3: Enhanced chart test function
+        async function testChart() {
             try {
-                logCommand('🧪 Step 3: 차트 테스트 시작...');
-                updateDebugInfo('차트 테스트 실행 중...');
+                logCommand('🧪 Step 3: Chart test starting...');
+                updateDebugInfo('Running chart test...');
                 
                 if (!chart) {
-                    logCommand('❌ 차트 객체가 없음. 차트 재초기화 시도...');
-                    if (!initChart()) {
-                        throw new Error('차트 초기화 실패');
-                    }
+                    logCommand('❌ Chart object missing. Attempting chart reinitialization...');
+                    await initChart();
                 }
                 
-                // 테스트 데이터 생성
+                // Generate test data
                 const testFreqs = [];
                 const testData = [];
                 
-                for (let i = 0; i <= 20; i++) {
-                    const freq = 1 + (i * 44.95); // 1MHz to 900MHz
-                    const amp = -90 + Math.random() * 60 + Math.sin(i * 0.5) * 20;
+                // Generate more realistic spectrum data
+                for (let i = 0; i <= 50; i++) {
+                    const freq = 1 + (i * 17.98); // 1MHz to 900MHz, 50 points
+                    let amp = -90 + Math.random() * 15; // Basic noise floor
+                    
+                    // Add multiple signals
+                    if (Math.abs(freq - 100) < 5) {
+                        amp = Math.max(amp, -25 - Math.abs(freq - 100) * 3);
+                    }
+                    if (Math.abs(freq - 433) < 10) {
+                        amp = Math.max(amp, -35 - Math.abs(freq - 433) * 2);
+                    }
+                    if (Math.abs(freq - 868) < 8) {
+                        amp = Math.max(amp, -30 - Math.abs(freq - 868) * 4);
+                    }
+                    if (Math.abs(freq - 50) < 3) {
+                        amp = Math.max(amp, -40 - Math.abs(freq - 50) * 5);
+                    }
+                    
                     testFreqs.push(freq);
                     testData.push(amp);
                 }
                 
-                logCommand(`테스트 데이터 생성: ${testFreqs.length}개 포인트`);
-                logCommand(`주파수 범위: ${testFreqs[0].toFixed(1)} - ${testFreqs[testFreqs.length-1].toFixed(1)} MHz`);
-                logCommand(`진폭 범위: ${Math.min(...testData).toFixed(1)} - ${Math.max(...testData).toFixed(1)} dBm`);
+                logCommand(`Test data generated: ${testFreqs.length} points`);
+                logCommand(`Frequency range: ${testFreqs[0].toFixed(1)} - ${testFreqs[testFreqs.length-1].toFixed(1)} MHz`);
+                logCommand(`Amplitude range: ${Math.min(...testData).toFixed(1)} - ${Math.max(...testData).toFixed(1)} dBm`);
                 
-                // 차트 업데이트
+                // Update chart data (safer method)
                 chart.data.labels = testFreqs.map(f => f.toFixed(1));
-                chart.data.datasets[0].data = testData;
+                chart.data.datasets[0].data = [...testData];
                 
-                // 강제 업데이트
-                chart.update('none');
+                // Force update
+                chart.update('active');
                 
-                // 전역 변수 업데이트
-                frequencies = testFreqs;
-                spectrumData = testData;
+                // Update global variables
+                frequencies = [...testFreqs];
+                spectrumData = [...testData];
                 
-                logCommand('✅ Step 3 완료: 차트 테스트 성공');
-                updateDebugInfo('차트 테스트 완료 - 데이터 표시됨');
+                logCommand('✅ Step 3 Complete: Chart test successful');
+                updateDebugInfo('Chart test complete - Actual data displayed');
                 
-                // 상태 업데이트
+                // Update status
                 document.getElementById('statusDisplay').textContent = 
-                    `테스트 데이터 로드됨 - ${testFreqs.length}개 포인트`;
+                    `Test data loaded - ${testFreqs.length} points (${testFreqs[0].toFixed(1)}-${testFreqs[testFreqs.length-1].toFixed(1)} MHz)`;
+                
+                // Confirm chart is actually rendered
+                setTimeout(() => {
+                    const canvas = document.getElementById('spectrumChart');
+                    if (canvas) {
+                        logCommand(`Chart rendering confirmed: Canvas size ${canvas.width}x${canvas.height}`);
+                    }
+                }, 100);
                 
             } catch (error) {
-                logCommand(`❌ Step 3 실패: 차트 테스트 오류 - ${error.message}`);
-                updateDebugInfo(`차트 테스트 실패: ${error.message}`);
-                console.error('차트 테스트 오류:', error);
+                logCommand(`❌ Step 3 Failed: Chart test error - ${error.message}`);
+                updateDebugInfo(`Chart test failed: ${error.message}`);
+                console.error('Chart test error:', error);
             }
         }
 
-        // Step 4: 대기 함수
+        // Step 4: Wait function
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // Step 5: 로그 출력 함수
+        // Step 5: Log output function
         function logCommand(message) {
             const logElement = document.getElementById('commandLog');
             if (!logElement) return;
@@ -605,18 +1174,18 @@
             logElement.textContent += logMessage + '\n';
             logElement.scrollTop = logElement.scrollHeight;
             
-            if (message.includes('❌') || message.includes('Error') || message.includes('실패')) {
+            if (message.includes('❌') || message.includes('Error') || message.includes('Failed')) {
                 console.error('tinySA:', message);
-            } else if (message.includes('⚠️') || message.includes('Warning') || message.includes('경고')) {
+            } else if (message.includes('⚠️') || message.includes('Warning') || message.includes('Warning')) {
                 console.warn('tinySA:', message);
-            } else if (message.includes('✅') || message.includes('Success') || message.includes('성공')) {
+            } else if (message.includes('✅') || message.includes('Success') || message.includes('Complete')) {
                 console.log('tinySA:', message);
             } else {
                 console.info('tinySA:', message);
             }
         }
 
-        // 연결 상태 업데이트
+        // Update connection status
         function updateConnectionStatus(status, message) {
             const statusElement = document.getElementById('connectionStatus');
             const connectBtn = document.getElementById('connectBtn');
@@ -629,21 +1198,27 @@
             
             switch(status) {
                 case 'connected':
-                    statusElement.textContent = '연결됨 ✓';
+                    statusElement.innerHTML = '<i class="fas fa-circle"></i> Connected ✓';
                     if (connectBtn) connectBtn.disabled = true;
                     if (disconnectBtn) disconnectBtn.disabled = false;
                     if (diagnoseBtn) diagnoseBtn.disabled = false;
                     isConnected = true;
                     break;
                 case 'disconnected':
-                    statusElement.textContent = '연결 안됨';
+                    statusElement.innerHTML = '<i class="fas fa-circle"></i> Disconnected';
                     if (connectBtn) connectBtn.disabled = false;
                     if (disconnectBtn) disconnectBtn.disabled = true;
                     if (diagnoseBtn) diagnoseBtn.disabled = true;
                     isConnected = false;
                     break;
                 case 'connecting':
-                    statusElement.textContent = '연결 중...';
+                    statusElement.innerHTML = '<i class="fas fa-circle"></i> Connecting...';
+                    if (connectBtn) connectBtn.disabled = true;
+                    if (disconnectBtn) disconnectBtn.disabled = true;
+                    if (diagnoseBtn) diagnoseBtn.disabled = true;
+                    break;
+                case 'scanning':
+                    statusElement.innerHTML = '<i class="fas fa-circle"></i> Scanning...';
                     if (connectBtn) connectBtn.disabled = true;
                     if (disconnectBtn) disconnectBtn.disabled = true;
                     if (diagnoseBtn) diagnoseBtn.disabled = true;
@@ -655,23 +1230,23 @@
             }
         }
 
-        // 안전한 명령 전송
-        async function sendCommandSafe(command, timeoutMs = 2000) {
+        // Safe command sending with timeout
+        async function sendCommandSafe(command, timeoutMs = 3000) {
             try {
-                logCommand(`📤 명령: ${command}`);
+                logCommand(`📤 Command: ${command}`);
                 await writer.write(new TextEncoder().encode(command + '\r'));
                 
                 const response = await readWithQuickTimeout(timeoutMs);
-                logCommand(`📥 응답: "${response}"`);
+                logCommand(`📥 Response: "${response}"`);
                 
                 return response;
             } catch (error) {
-                logCommand(`⚠️ 명령 "${command}" 오류: ${error.message} (무시됨)`);
+                logCommand(`⚠️ Command "${command}" error: ${error.message} (ignored)`);
                 return null;
             }
         }
 
-        // 빠른 타임아웃 읽기
+        // Quick timeout read with better error handling
         async function readWithQuickTimeout(timeoutMs) {
             return new Promise(async (resolve) => {
                 let response = '';
@@ -689,7 +1264,7 @@
                         const readPromise = reader.read();
                         const { value, done } = await Promise.race([
                             readPromise,
-                            new Promise((_, rej) => setTimeout(() => rej(new Error('read timeout')), 500))
+                            new Promise((_, rej) => setTimeout(() => rej(new Error('read timeout')), 1000))
                         ]);
                         
                         if (done || completed) break;
@@ -697,12 +1272,12 @@
                         const text = new TextDecoder().decode(value);
                         response += text;
                         
-                        if (response.length > 10 || response.includes('>')) {
+                        if (response.length > 50 || response.includes('>') || response.includes('\n')) {
                             break;
                         }
                     }
                 } catch (error) {
-                    // 읽기 오류 무시
+                    // Ignore read errors
                 }
                 
                 if (!completed) {
@@ -713,7 +1288,68 @@
             });
         }
 
-        // 연결 정리
+        // Enhanced data reading with proper timeout
+        async function readDataWithTimeout(timeoutMs, expectedLines = null) {
+            return new Promise(async (resolve) => {
+                let response = '';
+                let completed = false;
+                let lines = [];
+                
+                const timeout = setTimeout(() => {
+                    if (!completed) {
+                        completed = true;
+                        resolve(response);
+                    }
+                }, timeoutMs);
+                
+                try {
+                    let lastDataTime = Date.now();
+                    const IDLE_TIMEOUT = 2000; // 2 seconds without data
+                    
+                    while (!completed) {
+                        const readPromise = reader.read();
+                        const { value, done } = await Promise.race([
+                            readPromise,
+                            new Promise((_, rej) => setTimeout(() => rej(new Error('read timeout')), 1000))
+                        ]);
+                        
+                        if (done || completed) break;
+                        
+                        const text = new TextDecoder().decode(value);
+                        if (text.trim().length > 0) {
+                            response += text;
+                            lastDataTime = Date.now();
+                            
+                            // Count lines
+                            lines = response.split(/[\r\n]+/).filter(line => line.trim().length > 0);
+                            
+                            // If we have expected number of lines, we're done
+                            if (expectedLines && lines.length >= expectedLines) {
+                                logCommand(`✅ Received expected ${expectedLines} lines of data`);
+                                break;
+                            }
+                        }
+                        
+                        // Check for idle timeout
+                        if (Date.now() - lastDataTime > IDLE_TIMEOUT) {
+                            logCommand(`⏰ Idle timeout reached (${IDLE_TIMEOUT}ms without data)`);
+                            break;
+                        }
+                    }
+                } catch (error) {
+                    // Ignore read errors but log them
+                    logCommand(`⚠️ Read error (continuing): ${error.message}`);
+                }
+                
+                if (!completed) {
+                    completed = true;
+                    clearTimeout(timeout);
+                    resolve(response);
+                }
+            });
+        }
+
+        // Connection cleanup
         async function cleanupConnection() {
             try {
                 if (reader) {
@@ -721,7 +1357,7 @@
                         await reader.cancel();
                         await reader.releaseLock(); 
                     } catch (e) { 
-                        logCommand(`리더 정리 오류: ${e.message}`);
+                        logCommand(`Reader cleanup error: ${e.message}`);
                     }
                     reader = null;
                 }
@@ -730,7 +1366,7 @@
                     try { 
                         await writer.releaseLock(); 
                     } catch (e) { 
-                        logCommand(`라이터 정리 오류: ${e.message}`);
+                        logCommand(`Writer cleanup error: ${e.message}`);
                     }
                     writer = null;
                 }
@@ -739,48 +1375,48 @@
                     try { 
                         await serialPort.close(); 
                     } catch (e) { 
-                        logCommand(`포트 닫기 오류: ${e.message}`);
+                        logCommand(`Port close error: ${e.message}`);
                     }
                 }
             } catch (error) {
-                logCommand(`정리 오류: ${error.message}`);
+                logCommand(`Cleanup error: ${error.message}`);
             }
         }
 
-        // 장치 연결
+        // Device connection
         async function connectDevice() {
             if (!('serial' in navigator)) {
-                alert('이 브라우저는 Web Serial API를 지원하지 않습니다. Chrome 기반 브라우저를 사용하세요.');
+                alert('This browser does not support Web Serial API. Please use Chrome-based browsers.');
                 return;
             }
 
             try {
-                updateConnectionStatus('connecting', '1단계: 포트 선택 중...');
+                updateConnectionStatus('connecting', 'Step 1: Selecting port...');
                 
-                logCommand('🔍 시리얼 포트 요청 중...');
+                logCommand('🔍 Requesting serial port...');
                 
                 try {
                     serialPort = await navigator.serial.requestPort();
                 } catch (portError) {
                     if (portError.message.includes('No port selected')) {
-                        logCommand('⚠️ 사용자가 포트 선택을 취소함');
-                        updateConnectionStatus('disconnected', '포트 선택 취소됨');
+                        logCommand('⚠️ User cancelled port selection');
+                        updateConnectionStatus('disconnected', 'Port selection cancelled');
                         return;
                     } else {
-                        logCommand(`❌ 포트 선택 오류: ${portError.message}`);
-                        updateConnectionStatus('disconnected', `포트 선택 실패: ${portError.message}`);
+                        logCommand(`❌ Port selection error: ${portError.message}`);
+                        updateConnectionStatus('disconnected', `Port selection failed: ${portError.message}`);
                         return;
                     }
                 }
 
                 const portInfo = serialPort.getInfo();
-                logCommand(`✅ 포트 선택됨: VID=0x${portInfo.usbVendorId?.toString(16) || '????'}, PID=0x${portInfo.usbProductId?.toString(16) || '????'}`);
+                logCommand(`✅ Port selected: VID=0x${portInfo.usbVendorId?.toString(16) || '????'}, PID=0x${portInfo.usbProductId?.toString(16) || '????'}`);
 
                 const selectedBaudRate = document.getElementById('baudRate').value;
                 const baudRate = parseInt(selectedBaudRate);
 
-                updateConnectionStatus('connecting', `2단계: ${baudRate} bps로 연결 중...`);
-                logCommand(`🔧 보드레이트: ${baudRate} bps`);
+                updateConnectionStatus('connecting', `Step 2: Connecting at ${baudRate} bps...`);
+                logCommand(`🔧 Baud rate: ${baudRate} bps`);
 
                 await cleanupConnection();
                 
@@ -793,247 +1429,342 @@
                     bufferSize: 255
                 });
 
-                logCommand(`📡 포트가 성공적으로 열림 (${baudRate} bps)`);
+                logCommand(`📡 Port successfully opened (${baudRate} bps)`);
 
                 reader = serialPort.readable.getReader();
                 writer = serialPort.writable.getWriter();
-                logCommand(`   • 리더/라이터 설정 완료`);
+                logCommand(`   • Reader/writer setup complete`);
 
-                await sleep(300);
+                await sleep(500);
 
-                updateConnectionStatus('connecting', `3단계: 통신 테스트 (${baudRate} bps)`);
+                updateConnectionStatus('connecting', `Step 3: Communication test (${baudRate} bps)`);
                 const testResult = await quickConnectionTest();
                 
                 if (testResult) {
-                    logCommand(`✅ 연결 성공!`);
-                    updateConnectionStatus('connected', `tinySA 연결됨 (${baudRate} bps)`);
+                    logCommand(`✅ Connection successful!`);
+                    updateConnectionStatus('connected', `tinySA connected (${baudRate} bps)`);
                     
                     await basicInitialize();
                     return;
                 } else {
-                    throw new Error('통신 테스트 실패');
+                    throw new Error('Communication test failed');
                 }
                 
             } catch (error) {
-                updateConnectionStatus('disconnected', `연결 실패: ${error.message}`);
-                logCommand(`🚨 최종 연결 실패: ${error.message}`);
+                updateConnectionStatus('disconnected', `Connection failed: ${error.message}`);
+                logCommand(`🚨 Final connection failure: ${error.message}`);
                 await cleanupConnection();
             }
         }
 
-        // 빠른 연결 테스트
+        // Quick connection test
         async function quickConnectionTest() {
             try {
-                logCommand('🔄 통신 테스트 시작...');
+                logCommand('🔄 Communication test starting...');
                 
-                await sleep(100);
+                await sleep(200);
                 
-                logCommand('   📤 테스트 1: CR 전송');
+                logCommand('   📤 Test 1: Sending CR');
                 await writer.write(new TextEncoder().encode('\r'));
                 
-                const response1 = await readWithQuickTimeout(1500);
-                logCommand(`   📥 응답 1: "${response1}" (길이: ${response1.length})`);
+                const response1 = await readWithQuickTimeout(2000);
+                logCommand(`   📥 Response 1: "${response1}" (length: ${response1.length})`);
                 
-                logCommand('   📤 테스트 2: CRLF 전송');
+                logCommand('   📤 Test 2: Sending CRLF');
                 await writer.write(new TextEncoder().encode('\r\n'));
                 
-                const response2 = await readWithQuickTimeout(1000);
-                logCommand(`   📥 응답 2: "${response2}" (길이: ${response2.length})`);
+                const response2 = await readWithQuickTimeout(1500);
+                logCommand(`   📥 Response 2: "${response2}" (length: ${response2.length})`);
                 
                 const combinedResponse = response1 + response2;
-                logCommand(`   🔍 결합 분석: "${combinedResponse}"`);
+                logCommand(`   🔍 Combined analysis: "${combinedResponse}"`);
                 
                 if (combinedResponse.includes('ch>') || 
                     combinedResponse.includes('Ch>') || 
                     combinedResponse.includes('CH>')) {
-                    logCommand('   ✅ tinySA 프롬프트 "ch>" 확인됨');
+                    logCommand('   ✅ tinySA prompt "ch>" confirmed');
                     return true;
                 } else if (combinedResponse.includes('>')) {
-                    logCommand('   ✅ 일반 프롬프트 ">" 확인됨 (tinySA일 가능성 높음)');
+                    logCommand('   ✅ General prompt ">" confirmed (likely tinySA)');
                     return true;
                 } else if (combinedResponse.length > 0) {
-                    logCommand('   ⚠️ 응답 수신되었으나 프롬프트 형식이 다름');
+                    logCommand('   ⚠️ Response received but different prompt format');
                     if (combinedResponse.length > 3) {
-                        logCommand('   🔄 응답이 충분함, 연결 시도');
+                        logCommand('   🔄 Response sufficient, attempting connection');
                         return true;
                     }
                     return false;
                 } else {
-                    logCommand('   ❌ 응답 없음');
+                    logCommand('   ❌ No response');
                     return false;
                 }
                 
             } catch (error) {
-                logCommand(`❌ 연결 테스트 실패: ${error.message}`);
+                logCommand(`❌ Connection test failed: ${error.message}`);
                 return false;
             }
         }
 
-        // 기본 초기화
+        // Basic initialization
         async function basicInitialize() {
             try {
-                logCommand('🔧 기본 초기화 시작...');
+                logCommand('🔧 Basic initialization starting...');
                 
-                await sleep(200);
-                await sendCommandSafe('resume', 1000);
-                await sleep(200);
+                await sleep(300);
+                await sendCommandSafe('resume', 2000);
+                await sleep(300);
                 
-                logCommand('✅ 기본 초기화 완료');
+                logCommand('✅ Basic initialization complete');
                 
             } catch (error) {
-                logCommand(`⚠️ 초기화 경고: ${error.message} (정상 작동 가능)`);
+                logCommand(`⚠️ Initialization warning: ${error.message} (normal operation possible)`);
             }
         }
 
-        // 장치 연결 해제
+        // Device disconnect
         async function disconnectDevice() {
             try {
-                logCommand('🔌 연결 해제 시작...');
-                updateConnectionStatus('connecting', '연결 해제 중...');
+                logCommand('🔌 Disconnection starting...');
+                updateConnectionStatus('connecting', 'Disconnecting...');
                 
                 await cleanupConnection();
                 serialPort = null;
                 
-                updateConnectionStatus('disconnected', '장치 연결이 성공적으로 해제됨');
+                updateConnectionStatus('disconnected', 'Device successfully disconnected');
                 
             } catch (error) {
-                logCommand(`연결 해제 오류: ${error.message}`);
-                updateConnectionStatus('disconnected', '연결 해제됨 (오류 발생)');
+                logCommand(`Disconnection error: ${error.message}`);
+                updateConnectionStatus('disconnected', 'Disconnected (error occurred)');
             }
         }
 
-        // 연결 진단
+        // Connection diagnosis
         async function diagnoseConnection() {
             if (!isConnected) {
-                logCommand('❌ 장치가 연결되지 않음');
-                alert('먼저 장치를 연결하세요.');
+                logCommand('❌ Device not connected');
+                alert('Please connect device first.');
                 return;
             }
 
             try {
-                logCommand('🔍 === 연결 진단 시작 ===');
+                logCommand('🔍 === Connection Diagnosis Start ===');
                 
-                logCommand('1️⃣ 기본 통신 확인...');
-                const basicTest = await sendCommandSafe('', 1000);
-                logCommand(`   기본 응답: "${basicTest || '응답 없음'}"`);
+                logCommand('1️⃣ Basic communication check...');
+                const basicTest = await sendCommandSafe('', 1500);
+                logCommand(`   Basic response: "${basicTest || 'No response'}"`);
 
-                logCommand('2️⃣ 프롬프트 확인...');
-                const promptTest = await sendCommandSafe('\r', 1000);
-                logCommand(`   프롬프트: "${promptTest || '응답 없음'}"`);
+                logCommand('2️⃣ Prompt check...');
+                const promptTest = await sendCommandSafe('\r', 1500);
+                logCommand(`   Prompt: "${promptTest || 'No response'}"`);
 
-                logCommand('3️⃣ 기본 명령 테스트...');
-                const resumeTest = await sendCommandSafe('resume', 2000);
-                logCommand(`   Resume 응답: "${resumeTest || '응답 없음'}"`);
+                logCommand('3️⃣ Basic command test...');
+                const resumeTest = await sendCommandSafe('resume', 2500);
+                logCommand(`   Resume response: "${resumeTest || 'No response'}"`);
 
-                logCommand('🔍 === 진단 완료 ===');
+                logCommand('🔍 === Diagnosis Complete ===');
                 
             } catch (error) {
-                logCommand(`❌ 진단 오류: ${error.message}`);
+                logCommand(`❌ Diagnosis error: ${error.message}`);
             }
         }
 
-        // 로그 지우기
+        // Clear log
         function clearLog() {
             const logElement = document.getElementById('commandLog');
             if (logElement) {
                 logElement.textContent = '';
-                logCommand('📋 로그 지워짐');
+                logCommand('📋 Log cleared');
             }
         }
 
-        // Step 6: 스캔 시작 (간단한 테스트 데이터로)
+        // Step 6: Improved scan start with proper timing
         async function startScan() {
             if (isScanning) {
-                logCommand('❌ 스캔 시작 불가: 이미 스캔 중');
+                logCommand('❌ Cannot start scan: Already scanning');
                 return;
             }
             
+            const scanBtn = document.getElementById('scanBtn');
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+            
             isScanning = true;
-            document.getElementById('statusDisplay').textContent = '스캔 중...';
-            logCommand('🔄 Step 6: 스펙트럼 스캔 시작...');
-            updateDebugInfo('스캔 진행 중...');
+            scanAborted = false;
+            showProgress();
+            updateProgress(0, 'Initializing scan...');
+            
+            logCommand('🔄 Step 6: Spectrum scan starting...');
+            updateDebugInfo('Scan in progress...');
             
             try {
-                // 실제 하드웨어가 연결된 경우
+                // Clear previous data immediately
+                frequencies = [];
+                spectrumData = [];
+                
+                // Clear chart data immediately
+                if (chart) {
+                    chart.data.labels = [];
+                    chart.data.datasets[0].data = [];
+                    chart.update('none'); // Update without animation for immediate effect
+                }
+                
+                updateConnectionStatus('scanning', 'Scanning spectrum...');
+                
+                // Hardware connected case
                 if (isConnected) {
-                    logCommand('🔗 하드웨어에서 데이터 수신 중...');
+                    logCommand('🔗 Receiving data from hardware...');
+                    updateProgress(10, 'Hardware scan in progress...');
+                    
                     try {
                         const data = await getHardwareSpectrum();
                         
                         if (data && data.frequencies && data.frequencies.length > 0) {
-                            logCommand(`✅ 하드웨어 데이터 수신 성공: ${data.frequencies.length} 포인트`);
+                            logCommand(`✅ Hardware data reception successful: ${data.frequencies.length} points`);
+                            updateProgress(90, 'Processing hardware data...');
                             await updateChart(data);
-                            logCommand('✅ Step 6 완료: 하드웨어 스캔 성공');
+                            updateProgress(100, 'Hardware scan complete');
+                            logCommand('✅ Step 6 Complete: Hardware scan successful');
                             return;
                         } else {
-                            logCommand('⚠️ 하드웨어 데이터 무효, 테스트 데이터로 전환');
+                            logCommand('⚠️ Invalid hardware data, switching to test data');
                         }
                     } catch (hwError) {
-                        logCommand(`❌ 하드웨어 스캔 실패: ${hwError.message}`);
+                        logCommand(`❌ Hardware scan failed: ${hwError.message}`);
+                        updateProgress(20, 'Hardware scan failed, using test data...');
                     }
                 }
                 
-                // 하드웨어가 없거나 실패한 경우 테스트 데이터 사용
-                logCommand('🎯 테스트 데이터 생성 중...');
-                const data = generateTestData();
-                await updateChart(data);
+                // No hardware or failure case - use test data
+                logCommand('🎯 Generating test data...');
+                updateProgress(30, 'Generating test data...');
+                await sleep(500); // Simulate scan time
                 
-                logCommand('✅ Step 6 완료: 테스트 데이터 스캔 성공');
+                const data = generateTestData();
+                updateProgress(70, 'Processing test data...');
+                await sleep(300);
+                
+                await updateChart(data);
+                updateProgress(100, 'Test scan complete');
+                
+                logCommand('✅ Step 6 Complete: Test data scan successful');
                 
             } catch (error) {
-                const errorMsg = `스캔 오류: ${error.message}`;
+                const errorMsg = `Scan error: ${error.message}`;
                 document.getElementById('statusDisplay').textContent = errorMsg;
-                logCommand(`❌ Step 6 실패: ${errorMsg}`);
-                updateDebugInfo(`스캔 실패: ${error.message}`);
+                logCommand(`❌ Step 6 Failed: ${errorMsg}`);
+                updateDebugInfo(`Scan failed: ${error.message}`);
+                updateProgress(0, 'Scan failed');
                 
             } finally {
                 isScanning = false;
-                logCommand('🏁 스캔 프로세스 종료');
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '<i class="fas fa-search"></i> Start Scan';
+                updateConnectionStatus(isConnected ? 'connected' : 'disconnected', '');
+                hideProgress();
+                logCommand('🏁 Scan process ended');
             }
         }
 
-        // Step 7: 테스트 데이터 생성
+        // Step 7: Enhanced test data generation
         function generateTestData() {
             try {
-                logCommand('🎯 Step 7: 테스트 데이터 생성...');
+                logCommand('🎯 Step 7: Test data generation...');
                 
                 const startFreq = parseFloat(document.getElementById('startFreq').value) || 1;
                 const stopFreq = parseFloat(document.getElementById('stopFreq').value) || 900;
                 const points = parseInt(document.getElementById('scanPoints').value) || 101;
                 
-                logCommand(`   매개변수: ${startFreq}-${stopFreq} MHz, ${points} 포인트`);
+                logCommand(`   Parameters: ${startFreq}-${stopFreq} MHz, ${points} points`);
+                
+                if (startFreq >= stopFreq) {
+                    throw new Error('Start frequency must be less than stop frequency');
+                }
                 
                 const step = (stopFreq - startFreq) / (points - 1);
                 const freqs = [];
                 const spectrum = [];
                 
+                // Basic noise floor settings
+                const baseNoiseLevel = -90;
+                const noiseVariation = 8;
+                
                 for (let i = 0; i < points; i++) {
                     const freq = startFreq + i * step;
-                    let amp = -90 + Math.random() * 20; // 기본 노이즈 레벨
                     
-                    // 몇 개의 신호 추가
-                    if (Math.abs(freq - 100) < 5) {
-                        amp = Math.max(amp, -30 - Math.abs(freq - 100) * 4);
+                    // Basic noise floor (random noise + frequency-dependent variation)
+                    let amp = baseNoiseLevel + 
+                             (Math.random() - 0.5) * noiseVariation +
+                             Math.sin(freq * 0.01) * 3; // Slight frequency-dependent variation
+                    
+                    // Add multiple signals (more realistic format)
+                    
+                    // FM broadcast band (88-108 MHz) simulation
+                    if (freq >= 88 && freq <= 108) {
+                        for (let fm = 88.1; fm <= 107.9; fm += 0.2) {
+                            if (Math.abs(freq - fm) < 0.1) {
+                                amp = Math.max(amp, -25 + (Math.random() - 0.5) * 10);
+                            }
+                        }
                     }
-                    if (Math.abs(freq - 433) < 10) {
-                        amp = Math.max(amp, -40 - Math.abs(freq - 433) * 2);
+                    
+                    // Mobile base station signals (1800-1900 MHz)
+                    if (freq >= 1800 && freq <= 1900) {
+                        amp = Math.max(amp, -45 + (Math.random() - 0.5) * 15);
                     }
-                    if (Math.abs(freq - 868) < 8) {
-                        amp = Math.max(amp, -35 - Math.abs(freq - 868) * 3);
+                    
+                    // WiFi 2.4GHz band
+                    if (Math.abs(freq - 2412) < 5 || Math.abs(freq - 2437) < 5 || Math.abs(freq - 2462) < 5) {
+                        amp = Math.max(amp, -35 - Math.abs(freq % 25) * 2);
                     }
+                    
+                    // Amateur radio bands
+                    const hamBands = [14.2, 21.2, 28.5, 50.1, 144.1, 432.1, 1296.1];
+                    hamBands.forEach(hamFreq => {
+                        if (Math.abs(freq - hamFreq) < 1) {
+                            amp = Math.max(amp, -40 - Math.abs(freq - hamFreq) * 15);
+                        }
+                    });
+                    
+                    // ISM bands (433 MHz, 868 MHz, 915 MHz)
+                    if (Math.abs(freq - 433.92) < 2) {
+                        amp = Math.max(amp, -38 - Math.abs(freq - 433.92) * 8);
+                    }
+                    if (Math.abs(freq - 868) < 3) {
+                        amp = Math.max(amp, -42 - Math.abs(freq - 868) * 6);
+                    }
+                    if (Math.abs(freq - 915) < 3) {
+                        amp = Math.max(amp, -40 - Math.abs(freq - 915) * 7);
+                    }
+                    
+                    // Random spurious signals
+                    if (Math.random() < 0.02) { // 2% probability for random signal
+                        amp = Math.max(amp, -60 + Math.random() * 20);
+                    }
+                    
+                    // Harmonic signals (at multiple frequencies of fundamental signals)
+                    const fundamentals = [100, 433.92, 868];
+                    fundamentals.forEach(fund => {
+                        for (let harmonic = 2; harmonic <= 5; harmonic++) {
+                            if (Math.abs(freq - fund * harmonic) < 1) {
+                                const harmonicLevel = -45 - harmonic * 6;
+                                amp = Math.max(amp, harmonicLevel - Math.abs(freq - fund * harmonic) * 10);
+                            }
+                        }
+                    });
                     
                     freqs.push(freq);
-                    spectrum.push(amp);
+                    spectrum.push(Math.max(amp, -110)); // Minimum value limit
                 }
                 
-                logCommand(`✅ Step 7 완료: ${freqs.length}개 테스트 데이터 포인트 생성`);
+                logCommand(`✅ Step 7 Complete: ${freqs.length} realistic test data points generated`);
+                logCommand(`   Signal distribution: Noise floor ${baseNoiseLevel}dBm, Max signal ${Math.max(...spectrum).toFixed(1)}dBm`);
                 
                 return { frequencies: freqs, spectrum: spectrum };
                 
             } catch (error) {
-                logCommand(`❌ Step 7 실패: 테스트 데이터 생성 오류 - ${error.message}`);
+                logCommand(`❌ Step 7 Failed: Test data generation error - ${error.message}`);
                 
-                // 최소 대체 데이터
+                // Minimum fallback data
                 return {
                     frequencies: [1, 100, 200, 500, 900],
                     spectrum: [-90, -40, -60, -50, -80]
@@ -1041,131 +1772,211 @@
             }
         }
 
-        // Step 8: 차트 업데이트
+        // Step 8: Enhanced chart update with proper refresh
         async function updateChart(data) {
             try {
-                logCommand('📈 Step 8: 차트 업데이트 시작...');
-                updateDebugInfo('차트 업데이트 중...');
+                logCommand('📈 Step 8: Chart update starting...');
+                updateDebugInfo('Updating chart...');
                 
                 if (!chart) {
-                    logCommand('⚠️ 차트 객체가 없음. 재초기화...');
-                    if (!initChart()) {
-                        throw new Error('차트 초기화 실패');
-                    }
+                    logCommand('⚠️ Chart object missing. Reinitializing...');
+                    await initChart();
                 }
                 
                 if (!data || !data.frequencies || !data.spectrum) {
-                    throw new Error('잘못된 데이터 형식');
+                    throw new Error('Invalid data format');
                 }
                 
                 if (data.frequencies.length !== data.spectrum.length) {
-                    throw new Error('주파수와 스펙트럼 데이터 길이가 다름');
+                    throw new Error('Frequency and spectrum data length mismatch');
                 }
                 
-                logCommand(`   데이터 검증 완료: ${data.frequencies.length} 포인트`);
-                logCommand(`   주파수 범위: ${data.frequencies[0].toFixed(2)} - ${data.frequencies[data.frequencies.length-1].toFixed(2)} MHz`);
-                logCommand(`   진폭 범위: ${Math.min(...data.spectrum).toFixed(1)} - ${Math.max(...data.spectrum).toFixed(1)} dBm`);
+                if (data.frequencies.length === 0) {
+                    throw new Error('Data is empty');
+                }
                 
-                // 전역 변수 업데이트
+                logCommand(`   Data validation complete: ${data.frequencies.length} points`);
+                logCommand(`   Frequency range: ${data.frequencies[0].toFixed(2)} - ${data.frequencies[data.frequencies.length-1].toFixed(2)} MHz`);
+                logCommand(`   Amplitude range: ${Math.min(...data.spectrum).toFixed(1)} - ${Math.max(...data.spectrum).toFixed(1)} dBm`);
+                
+                // Update global variables (deep copy)
                 frequencies = [...data.frequencies];
                 spectrumData = [...data.spectrum];
                 
-                // 차트 데이터 업데이트
+                // Auto-adjust chart scale
+                const minAmp = Math.min(...data.spectrum);
+                const maxAmp = Math.max(...data.spectrum);
+                const ampRange = maxAmp - minAmp;
+                const padding = Math.max(ampRange * 0.1, 5); // 10% padding, minimum 5dB
+                
+                // COMPLETE chart data replacement for proper refresh
                 chart.data.labels = data.frequencies.map(f => f.toFixed(1));
                 chart.data.datasets[0].data = [...data.spectrum];
                 
-                // 차트 업데이트 실행
-                chart.update('none');
+                // Auto-adjust Y-axis range
+                chart.options.scales.y.min = Math.max(-120, minAmp - padding);
+                chart.options.scales.y.max = Math.min(20, maxAmp + padding);
                 
-                // 상태 업데이트
-                const statusMsg = `스캔 완료 - ${data.frequencies.length}개 포인트, 범위: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
+                // Force complete chart update
+                logCommand('   Starting chart rendering...');
+                chart.update('active');
+                
+                // Wait for rendering completion
+                await new Promise(resolve => {
+                    // Chart.js animation completion event wait
+                    const onAnimationComplete = () => {
+                        chart.options.animation.onComplete = null;
+                        resolve();
+                    };
+                    
+                    chart.options.animation.onComplete = onAnimationComplete;
+                    
+                    // Safety timeout: maximum 3 seconds wait
+                    setTimeout(resolve, 3000);
+                });
+                
+                // Status update
+                const statusMsg = `Scan complete - ${data.frequencies.length} points, Range: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
                 document.getElementById('statusDisplay').textContent = statusMsg;
                 
-                updateDebugInfo('차트 업데이트 완료');
-                logCommand('✅ Step 8 완료: 차트 업데이트 성공');
+                updateDebugInfo('Chart update complete');
+                logCommand('✅ Step 8 Complete: Chart update successful');
+                
+                // Confirm chart rendering
+                const canvas = document.getElementById('spectrumChart');
+                if (canvas) {
+                    logCommand(`   Final confirmation: Canvas size ${canvas.width}x${canvas.height}, Data ${chart.data.datasets[0].data.length} points`);
+                }
                 
             } catch (error) {
-                logCommand(`❌ Step 8 실패: 차트 업데이트 오류 - ${error.message}`);
-                updateDebugInfo(`차트 업데이트 실패: ${error.message}`);
+                logCommand(`❌ Step 8 Failed: Chart update error - ${error.message}`);
+                updateDebugInfo(`Chart update failed: ${error.message}`);
                 throw error;
             }
         }
 
-        // 하드웨어 스펙트럼 가져오기
+        // Get hardware spectrum with proper timing
         async function getHardwareSpectrum() {
             try {
                 const startFreq = parseFloat(document.getElementById('startFreq').value) * 1e6;
                 const stopFreq = parseFloat(document.getElementById('stopFreq').value) * 1e6;
                 const points = parseInt(document.getElementById('scanPoints').value);
 
-                logCommand('📡 === 하드웨어 스펙트럼 측정 시작 ===');
-                logCommand(`범위 설정: ${startFreq/1e6} - ${stopFreq/1e6} MHz, ${points} 포인트`);
+                logCommand('📡 === Hardware Spectrum Measurement Start ===');
+                logCommand(`Range setup: ${startFreq/1e6} - ${stopFreq/1e6} MHz, ${points} points`);
 
+                updateProgress(15, 'Configuring hardware...');
+                
+                // Configuration with proper delays
                 await sendCommandSafe('pause');
-                await sleep(200);
+                await sleep(300);
 
                 await sendCommandSafe(`sweep start ${Math.floor(startFreq)}`);
-                await sleep(100);
+                await sleep(200);
                 await sendCommandSafe(`sweep stop ${Math.floor(stopFreq)}`);
-                await sleep(100);
+                await sleep(200);
+                await sendCommandSafe(`sweep points ${points}`);
+                await sleep(200);
 
+                updateProgress(25, 'Starting hardware scan...');
                 await sendCommandSafe('resume');
                 
-                const scanTime = Math.max(1000, points * 5);
-                logCommand(`   스캔 완료 대기 중... (${scanTime}ms)`);
-                await sleep(scanTime);
-
-                const freqResponse = await sendCommandSafe('frequencies', 5000);
-                const dataResponse = await sendCommandSafe('data 0', 5000);
+                // Calculate proper scan time based on points and frequency range
+                const freqRange = stopFreq - startFreq;
+                const baseScanTime = 3000; // 3 seconds base time
+                const pointsFactor = Math.max(1, points / 101); // Scale with points
+                const rangeFactor = Math.max(1, freqRange / 900e6); // Scale with frequency range
+                const scanTime = baseScanTime * pointsFactor * rangeFactor;
                 
-                if (!freqResponse || !dataResponse) {
-                    throw new Error('스펙트럼 데이터 가져오기 실패');
+                logCommand(`   Calculated scan time: ${scanTime}ms (base: ${baseScanTime}ms, points factor: ${pointsFactor.toFixed(2)}, range factor: ${rangeFactor.toFixed(2)})`);
+                
+                // Wait for scan completion with progress updates
+                const progressSteps = 10;
+                const stepTime = scanTime / progressSteps;
+                
+                for (let i = 0; i < progressSteps; i++) {
+                    if (scanAborted) {
+                        throw new Error('Scan aborted by user');
+                    }
+                    
+                    const progress = 25 + (i + 1) * 4; // Progress from 25% to 65%
+                    updateProgress(progress, `Hardware scanning... ${progress-24}/${progressSteps}`);
+                    await sleep(stepTime);
                 }
 
-                // 데이터 파싱
+                updateProgress(70, 'Scan complete, reading data...');
+                
+                // Read frequency data with longer timeout
+                logCommand('   Reading frequency data...');
+                const freqResponse = await sendCommandSafe('frequencies', 8000);
+                
+                updateProgress(80, 'Reading amplitude data...');
+                
+                // Read amplitude data with longer timeout  
+                logCommand('   Reading amplitude data...');
+                const dataResponse = await sendCommandSafe('data 0', 8000);
+                
+                updateProgress(85, 'Processing received data...');
+                
+                if (!freqResponse || !dataResponse) {
+                    throw new Error('Failed to get spectrum data');
+                }
+
+                // Enhanced data parsing
                 const freqLines = freqResponse.split(/[\r\n]+/)
                     .map(line => line.trim())
-                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)))
+                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)) && !line.includes('>'))
                     .map(line => parseFloat(line));
 
                 const dataLines = dataResponse.split(/[\r\n]+/)
                     .map(line => line.trim())
-                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)))
+                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)) && !line.includes('>'))
                     .map(line => parseFloat(line));
 
+                logCommand(`   Parsed data: ${freqLines.length} frequencies, ${dataLines.length} amplitudes`);
+                
+                if (freqLines.length === 0 || dataLines.length === 0) {
+                    throw new Error('No valid numeric data received');
+                }
+
                 const minLength = Math.min(freqLines.length, dataLines.length);
+                if (minLength < points * 0.8) { // At least 80% of expected points
+                    logCommand(`⚠️ Warning: Received ${minLength} points, expected ${points}`);
+                }
+                
                 const freqs = freqLines.slice(0, minLength).map(freq => freq / 1e6);
                 const spectrum = dataLines.slice(0, minLength);
 
-                logCommand('📡 === 하드웨어 스펙트럼 측정 완료 ===');
+                logCommand('📡 === Hardware Spectrum Measurement Complete ===');
+                logCommand(`   Final data: ${freqs.length} points from ${freqs[0]?.toFixed(2)} to ${freqs[freqs.length-1]?.toFixed(2)} MHz`);
                 
                 return { frequencies: freqs, spectrum: spectrum };
                 
             } catch (error) {
-                logCommand(`❌ 하드웨어 스캔 오류: ${error.message}`);
+                logCommand(`❌ Hardware scan error: ${error.message}`);
                 throw error;
             }
         }
 
-        // 마커 업데이트
+        // Update marker
         function updateMarker(frequency, amplitude) {
             const markerElement = document.getElementById('markerInfo');
             if (markerElement) {
                 markerElement.innerHTML = `
-                    <strong>주파수:</strong> ${frequency.toFixed(2)} MHz<br>
-                    <strong>진폭:</strong> ${amplitude.toFixed(1)} dBm
+                    <strong>Frequency:</strong> ${frequency.toFixed(2)} MHz<br>
+                    <strong>Amplitude:</strong> ${amplitude.toFixed(1)} dBm
                 `;
             }
         }
 
-        // CSV 다운로드
+        // CSV download
         function downloadCSV() {
             if (frequencies.length === 0 || spectrumData.length === 0) {
-                alert('먼저 스캔을 실행하세요.');
+                alert('Please run a scan first.');
                 return;
             }
 
-            let csvContent = "주파수(MHz),신호강도(dBm)\n";
+            let csvContent = "Frequency(MHz),Signal_Strength(dBm)\n";
             for (let i = 0; i < frequencies.length; i++) {
                 csvContent += `${frequencies[i].toFixed(3)},${spectrumData[i].toFixed(2)}\n`;
             }
@@ -1181,43 +1992,58 @@
             document.body.removeChild(link);
         }
 
-        // 페이지 로드 초기화
-        window.addEventListener('load', function() {
-            logCommand('🚀 === Step 1: 시스템 초기화 시작 ===');
+        // Enhanced page load initialization
+        window.addEventListener('load', async function() {
+            logCommand('🚀 === Step 1: System Initialization Start ===');
             
             try {
-                updateDebugInfo('시스템 초기화 중...');
+                // Theme initialization
+                initTheme();
                 
-                // Chart.js 라이브러리 확인
+                updateDebugInfo('System initializing...');
+                
+                // Check Chart.js library
                 if (typeof Chart === 'undefined') {
-                    logCommand('❌ Chart.js 라이브러리가 로드되지 않음');
-                    updateDebugInfo('Chart.js 라이브러리 로드 실패');
+                    logCommand('❌ Chart.js library not loaded');
+                    updateDebugInfo('Chart.js library load failed');
                     return;
                 }
                 
-                logCommand('✅ Chart.js 라이브러리 로드 확인');
+                logCommand('✅ Chart.js library load confirmed');
                 
-                // 차트 초기화
-                if (initChart()) {
-                    logCommand('✅ Step 1 완료: 차트 초기화 성공');
-                } else {
-                    logCommand('❌ Step 1 실패: 차트 초기화 실패');
-                    updateDebugInfo('차트 초기화 실패');
-                    return;
+                // Wait for DOM to fully load
+                await new Promise(resolve => {
+                    if (document.readyState === 'complete') {
+                        resolve();
+                    } else {
+                        window.addEventListener('load', resolve);
+                    }
+                });
+                
+                // Wait for chart container to be ready
+                const chartContainer = document.querySelector('.chart-wrapper');
+                if (chartContainer) {
+                    // Wait briefly for container size to be set
+                    await new Promise(resolve => setTimeout(resolve, 200));
                 }
                 
-                // Web Serial API 확인
+                // Chart initialization
+                logCommand('🔄 Chart initialization starting...');
+                await initChart();
+                logCommand('✅ Step 1 Complete: Chart initialization successful');
+                
+                // Check Web Serial API
                 if (!('serial' in navigator)) {
-                    logCommand('❌ 경고: 이 브라우저는 Web Serial API를 지원하지 않습니다.');
-                    logCommand('🔧 해결방법: Chrome, Edge, Opera 브라우저를 사용하세요.');
-                    updateDebugInfo('Web Serial API 지원 안됨');
+                    logCommand('❌ Warning: This browser does not support Web Serial API.');
+                    logCommand('🔧 Solution: Use Chrome, Edge, Opera browsers.');
+                    updateDebugInfo('Web Serial API not supported');
                 } else {
-                    logCommand('✅ Web Serial API 지원됨');
+                    logCommand('✅ Web Serial API supported');
                     
-                    // 연결 해제 이벤트 리스너
+                    // Disconnect event listener
                     navigator.serial.addEventListener('disconnect', (event) => {
                         if (event.target === serialPort) {
-                            updateConnectionStatus('disconnected', '🔌 장치 연결 해제됨 (USB 케이블 확인)');
+                            updateConnectionStatus('disconnected', '🔌 Device disconnected (check USB cable)');
                             serialPort = null;
                             reader = null;
                             writer = null;
@@ -1225,19 +2051,44 @@
                     });
                 }
                 
-                // 초기 테스트 차트 표시
-                setTimeout(() => {
-                    logCommand('🔄 초기 테스트 차트 표시...');
-                    testChart();
+                // Add animation effects
+                document.querySelectorAll('.card').forEach((card, index) => {
+                    card.style.animationDelay = `${index * 0.1}s`;
+                });
+                
+                // Chart resize event listener
+                window.addEventListener('resize', () => {
+                    if (chart) {
+                        chart.resize();
+                        logCommand('📏 Chart resized');
+                    }
+                });
+                
+                // Initial test chart display
+                setTimeout(async () => {
+                    logCommand('🔄 Displaying initial test chart...');
+                    await testChart();
                 }, 500);
                 
-                logCommand('✅ 전체 시스템 초기화 완료');
-                updateDebugInfo('시스템 초기화 완료');
+                logCommand('✅ Complete system initialization finished');
+                updateDebugInfo('System initialization complete - Chart ready');
                 
             } catch (error) {
-                logCommand(`❌ 초기화 오류: ${error.message}`);
-                updateDebugInfo(`초기화 실패: ${error.message}`);
-                console.error('초기화 오류:', error);
+                logCommand(`❌ Initialization error: ${error.message}`);
+                updateDebugInfo(`Initialization failed: ${error.message}`);
+                console.error('Initialization error:', error);
+                
+                // Try alternative initialization on failure
+                logCommand('🔄 Attempting alternative initialization...');
+                setTimeout(async () => {
+                    try {
+                        await initChart();
+                        await testChart();
+                        logCommand('✅ Alternative initialization successful');
+                    } catch (retryError) {
+                        logCommand(`❌ Alternative initialization also failed: ${retryError.message}`);
+                    }
+                }, 1500);
             }
         });
     </script>
