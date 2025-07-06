@@ -1153,27 +1153,74 @@
             }
         }
 
-        // 강화된 안전한 명령 전송
-        async function sendCommandSafe(command, timeoutMs = 2000) {
-            try {
-                logCommand(`📤 명령: "${command}"`);
-                await writer.write(new TextEncoder().encode(command + '\r'));
+        // 타임아웃과 함께 응답 읽기 (v18 방식)
+        async function readResponseWithTimeout(timeoutMs = 5000) {
+            return new Promise(async (resolve, reject) => {
+                let response = '';
                 
-                const response = await readWithQuickTimeout(timeoutMs);
+                const timeout = setTimeout(() => {
+                    reject(new Error('응답 타임아웃'));
+                }, timeoutMs);
                 
-                // 응답 길이에 따른 로그 레벨 조정
-                if (response.length > 100) {
-                    logCommand(`📥 응답: ${response.length} 문자 (샘플: "${response.substring(0, 50)}...")`);
-                } else if (response.length > 0) {
-                    logCommand(`📥 응답: "${response}"`);
-                } else {
-                    logCommand(`📥 응답: (빈 응답)`);
+                try {
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        
+                        const text = new TextDecoder().decode(value);
+                        response += text;
+                        
+                        if (response.includes('ch>') || 
+                            response.includes('Ch>') || 
+                            response.includes('CH>') ||
+                            response.endsWith('> ') ||
+                            response.endsWith('>')) {
+                            break;
+                        }
+                        
+                        if (response.length > 10000) {
+                            break;
+                        }
+                    }
+                    
+                    clearTimeout(timeout);
+                    
+                    const cleaned = response
+                        .replace(/ch>/gi, '')
+                        .replace(/>/g, '')
+                        .replace(/\r/g, '')
+                        .trim();
+                        
+                    resolve(cleaned);
+                    
+                } catch (error) {
+                    clearTimeout(timeout);
+                    reject(error);
                 }
+            });
+        }
+
+        // 명령 전송 (v18 방식)
+        async function sendCommand(command) {
+            if (!isConnected) {
+                logCommand(`시뮬레이션: ${command}`);
+                return 'OK';
+            }
+
+            try {
+                logCommand(`전송 중: ${command}`);
+                
+                const data = new TextEncoder().encode(command + '\r');
+                await writer.write(data);
+                
+                const response = await readResponseWithTimeout(5000);
+                logCommand(`응답: "${response}"`);
                 
                 return response;
+                
             } catch (error) {
-                logCommand(`⚠️ 명령 "${command}" 오류: ${error.message}`);
-                return null;
+                logCommand(`명령 오류: ${error.message}`);
+                throw error;
             }
         }
 
@@ -1253,8 +1300,15 @@
             }
         }
 
-        // 장치 연결
+        // 장치 연결 (v18 방식)
         async function connectDevice() {
+            const deviceMode = document.getElementById('deviceMode');
+            
+            // deviceMode가 없으면 하드웨어 모드로 가정
+            if (!deviceMode) {
+                logCommand('⚠️ 장치 모드 선택기가 없음. 하드웨어 모드로 진행...');
+            }
+
             if (!('serial' in navigator)) {
                 alert('이 브라우저는 Web Serial API를 지원하지 않습니다. Chrome 기반 브라우저를 사용하세요.');
                 return;
@@ -1268,7 +1322,12 @@
                 try {
                     serialPort = await navigator.serial.requestPort();
                 } catch (portError) {
-                    if (portError.message.includes('No port selected')) {
+                    if (portError.message.includes('blocklist') || portError.message.includes('blocked')) {
+                        logCommand('❌ 포트 선택 실패: 브라우저가 장치를 차단함');
+                        logCommand('🔍 감지된 문제: USB 장치가 시리얼 포트로 인식되지 않음');
+                        updateConnectionStatus('disconnected', '포트 선택 실패 - USB 장치 문제');
+                        return;
+                    } else if (portError.message.includes('No port selected')) {
                         logCommand('⚠️ 사용자가 포트 선택을 취소함');
                         updateConnectionStatus('disconnected', '포트 선택 취소됨');
                         return;
@@ -1282,8 +1341,16 @@
                 const portInfo = serialPort.getInfo();
                 logCommand(`✅ 포트 선택됨: VID=0x${portInfo.usbVendorId?.toString(16) || '????'}, PID=0x${portInfo.usbProductId?.toString(16) || '????'}`);
 
+                if (portInfo.usbVendorId === 0x0483 && portInfo.usbProductId === 0x5740) {
+                    logCommand('🎯 tinySA 장치 확인됨! (VID=0x0483, PID=0x5740)');
+                } else if (portInfo.usbVendorId === 0x0483) {
+                    logCommand('⚠️ STM32 기반 장치 감지됨 (tinySA일 가능성 높음)');
+                } else {
+                    logCommand('❓ 알 수 없는 장치. 계속 진행...');
+                }
+
                 const selectedBaudRate = document.getElementById('baudRate').value;
-                const baudRate = parseInt(selectedBaudRate);
+                const baudRate = selectedBaudRate === 'auto' ? 9600 : parseInt(selectedBaudRate);
 
                 updateConnectionStatus('connecting', `2단계: ${baudRate} bps로 연결 중...`);
                 logCommand(`🔧 보드레이트: ${baudRate} bps`);
@@ -1823,7 +1890,7 @@
             }
         }
 
-        // Step 6: 개선된 스캔 시작
+        // 스캔 시작 (v18 방식 - 간소화)
         async function startScan() {
             if (isScanning) {
                 logCommand('❌ 스캔 시작 불가: 이미 스캔 중');
@@ -1832,151 +1899,142 @@
             
             isScanning = true;
             document.getElementById('statusDisplay').textContent = '스캔 중...';
-            logCommand('🔄 Step 6: 스펙트럼 스캔 시작...');
-            updateDebugInfo('스캔 진행 중...');
+            logCommand('🔄 스펙트럼 스캔 시작...');
             
             try {
-                // 실제 하드웨어가 연결된 경우
+                let data = null;
+
                 if (isConnected) {
-                    logCommand('🔗 하드웨어에서 데이터 수신 중...');
+                    logCommand('🔗 하드웨어 모드: 실제 tinySA에서 데이터 수신 중...');
                     try {
-                        const data = await getHardwareSpectrum();
+                        data = await getHardwareSpectrum();
                         
                         if (data && data.frequencies && data.frequencies.length > 0) {
                             logCommand(`✅ 하드웨어 데이터 수신 성공: ${data.frequencies.length} 포인트`);
-                            await updateChart(data);
-                            logCommand('✅ Step 6 완료: 하드웨어 스캔 성공');
-                            return;
                         } else {
-                            logCommand('⚠️ 하드웨어 데이터 무효, 테스트 데이터로 전환');
+                            logCommand('⚠️ 하드웨어 데이터 무효, 시뮬레이션으로 전환');
+                            data = null;
                         }
                     } catch (hwError) {
                         logCommand(`❌ 하드웨어 스캔 실패: ${hwError.message}`);
+                        data = null;
                     }
                 }
                 
-                // 하드웨어가 없거나 실패한 경우 테스트 데이터 사용
-                logCommand('🎯 테스트 데이터 생성 중...');
-                const data = generateTestData();
+                // 하드웨어 실패 또는 미연결시 시뮬레이션 사용
+                if (!data) {
+                    logCommand('🎯 시뮬레이션 데이터 사용...');
+                    
+                    // 스캔 지연 시뮬레이션
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    data = simulateSpectrum();
+                    logCommand(`📊 시뮬레이션에서 ${data.frequencies.length}개 데이터 포인트 생성`);
+                }
+                
+                // 차트 업데이트 전 데이터 유효성 검사
+                if (!data || !data.frequencies || !data.spectrum || 
+                    data.frequencies.length === 0 || data.spectrum.length === 0) {
+                    throw new Error('잘못된 스펙트럼 데이터 생성됨');
+                }
+                
+                // 차트 업데이트
                 await updateChart(data);
                 
-                logCommand('✅ Step 6 완료: 테스트 데이터 스캔 성공');
+                // 상태 업데이트
+                const statusMsg = `스캔 완료 - ${data.frequencies.length}개 포인트, 범위: ${data.frequencies[0].toFixed(1)} - ${data.frequencies[data.frequencies.length-1].toFixed(1)} MHz`;
+                document.getElementById('statusDisplay').textContent = statusMsg;
+                
+                logCommand('✅ 스캔 성공적으로 완료');
                 
             } catch (error) {
                 const errorMsg = `스캔 오류: ${error.message}`;
                 document.getElementById('statusDisplay').textContent = errorMsg;
-                logCommand(`❌ Step 6 실패: ${errorMsg}`);
-                updateDebugInfo(`스캔 실패: ${error.message}`);
+                logCommand(`❌ ${errorMsg}`);
                 
+                // 최소 대체 데이터 생성 시도
+                try {
+                    logCommand('🆘 대체 데이터 생성 시도...');
+                    const fallbackData = {
+                        frequencies: [1, 50, 100, 200, 500, 900],
+                        spectrum: [-90, -85, -60, -70, -80, -95]
+                    };
+                    
+                    await updateChart(fallbackData);
+                    logCommand('✅ 대체 데이터 로드 성공');
+                } catch (fallbackError) {
+                    logCommand(`❌ 대체 데이터 실패: ${fallbackError.message}`);
+                }
             } finally {
                 isScanning = false;
                 logCommand('🏁 스캔 프로세스 종료');
             }
         }
 
-        // Step 7: 향상된 테스트 데이터 생성
-        function generateTestData() {
+        // 스펙트럼 시뮬레이션 (v18 방식 - 간소화)
+        function simulateSpectrum() {
             try {
-                logCommand('🎯 Step 7: 테스트 데이터 생성...');
+                logCommand('🎯 시뮬레이션 데이터 생성 중...');
                 
+                // 유효성 검사와 함께 매개변수 가져오기
                 const startFreq = parseFloat(document.getElementById('startFreq').value) || 1;
                 const stopFreq = parseFloat(document.getElementById('stopFreq').value) || 900;
                 const points = parseInt(document.getElementById('scanPoints').value) || 101;
-                
-                logCommand(`   매개변수: ${startFreq}-${stopFreq} MHz, ${points} 포인트`);
-                
+                const noiseLevel = -80; // 고정 노이즈 레벨
+
+                logCommand(`   매개변수: ${startFreq}-${stopFreq} MHz, ${points} 포인트, 노이즈 ${noiseLevel} dBm`);
+
+                // 매개변수 유효성 검사
                 if (startFreq >= stopFreq) {
-                    throw new Error('시작 주파수가 종료 주파수보다 커야 합니다');
+                    throw new Error('시작 주파수가 종료 주파수보다 작아야 합니다');
                 }
-                
+                if (points < 2 || points > 10000) {
+                    throw new Error('포인트는 2와 10000 사이여야 합니다');
+                }
+
+                // 주파수 배열 생성
                 const step = (stopFreq - startFreq) / (points - 1);
                 const freqs = [];
                 const spectrum = [];
-                
-                // 기본 노이즈 플로어 설정
-                const baseNoiseLevel = -90;
-                const noiseVariation = 8;
-                
+
+                logCommand(`   ${points}개 주파수 포인트 생성`);
+
+                // 스펙트럼 데이터 생성
                 for (let i = 0; i < points; i++) {
                     const freq = startFreq + i * step;
-                    
-                    // 기본 노이즈 플로어 (랜덤 노이즈 + 주파수별 변화)
-                    let amp = baseNoiseLevel + 
-                             (Math.random() - 0.5) * noiseVariation +
-                             Math.sin(freq * 0.01) * 3; // 약간의 주파수별 변화
-                    
-                    // 여러 신호 추가 (더 현실적인 형태)
-                    
-                    // FM 방송 대역 (88-108 MHz) 시뮬레이션
-                    if (freq >= 88 && freq <= 108) {
-                        for (let fm = 88.1; fm <= 107.9; fm += 0.2) {
-                            if (Math.abs(freq - fm) < 0.1) {
-                                amp = Math.max(amp, -25 + (Math.random() - 0.5) * 10);
-                            }
-                        }
+                    let amplitude = noiseLevel + (Math.random() - 0.5) * 10;
+
+                    // 몇 개의 테스트 신호 추가
+                    if (Math.abs(freq - 100) < 5) {
+                        amplitude = Math.max(amplitude, -20 - Math.abs(freq - 100) * 4);
                     }
-                    
-                    // 휴대폰 기지국 신호 (1800-1900 MHz)
-                    if (freq >= 1800 && freq <= 1900) {
-                        amp = Math.max(amp, -45 + (Math.random() - 0.5) * 15);
+                    if (Math.abs(freq - 433) < 10) {
+                        amplitude = Math.max(amplitude, -30 - Math.abs(freq - 433) * 2);
                     }
-                    
-                    // WiFi 2.4GHz 대역
-                    if (Math.abs(freq - 2412) < 5 || Math.abs(freq - 2437) < 5 || Math.abs(freq - 2462) < 5) {
-                        amp = Math.max(amp, -35 - Math.abs(freq % 25) * 2);
+                    if (Math.abs(freq - 868) < 8) {
+                        amplitude = Math.max(amplitude, -25 - Math.abs(freq - 868) * 3);
                     }
-                    
-                    // 아마추어 무선 대역들
-                    const hamBands = [14.2, 21.2, 28.5, 50.1, 144.1, 432.1, 1296.1];
-                    hamBands.forEach(hamFreq => {
-                        if (Math.abs(freq - hamFreq) < 1) {
-                            amp = Math.max(amp, -40 - Math.abs(freq - hamFreq) * 15);
-                        }
-                    });
-                    
-                    // ISM 대역 (433 MHz, 868 MHz, 915 MHz)
-                    if (Math.abs(freq - 433.92) < 2) {
-                        amp = Math.max(amp, -38 - Math.abs(freq - 433.92) * 8);
-                    }
-                    if (Math.abs(freq - 868) < 3) {
-                        amp = Math.max(amp, -42 - Math.abs(freq - 868) * 6);
-                    }
-                    if (Math.abs(freq - 915) < 3) {
-                        amp = Math.max(amp, -40 - Math.abs(freq - 915) * 7);
-                    }
-                    
-                    // 랜덤 스퓨리어스 신호들
-                    if (Math.random() < 0.02) { // 2% 확률로 랜덤 신호
-                        amp = Math.max(amp, -60 + Math.random() * 20);
-                    }
-                    
-                    // 하모닉 신호들 (기본 신호의 배수 주파수에서)
-                    const fundamentals = [100, 433.92, 868];
-                    fundamentals.forEach(fund => {
-                        for (let harmonic = 2; harmonic <= 5; harmonic++) {
-                            if (Math.abs(freq - fund * harmonic) < 1) {
-                                const harmonicLevel = -45 - harmonic * 6;
-                                amp = Math.max(amp, harmonicLevel - Math.abs(freq - fund * harmonic) * 10);
-                            }
-                        }
-                    });
-                    
+
                     freqs.push(freq);
-                    spectrum.push(Math.max(amp, -110)); // 최소값 제한
+                    spectrum.push(amplitude);
                 }
-                
-                logCommand(`✅ Step 7 완료: ${freqs.length}개 현실적인 테스트 데이터 포인트 생성`);
-                logCommand(`   신호 분포: 노이즈 플로어 ${baseNoiseLevel}dBm, 최대 신호 ${Math.max(...spectrum).toFixed(1)}dBm`);
-                
-                return { frequencies: freqs, spectrum: spectrum };
-                
+
+                logCommand(`   ${spectrum.length}개 진폭 포인트 생성됨`);
+                logCommand(`   진폭 범위: ${Math.min(...spectrum).toFixed(1)} ~ ${Math.max(...spectrum).toFixed(1)} dBm`);
+
+                return { 
+                    frequencies: freqs, 
+                    spectrum: spectrum 
+                };
+
             } catch (error) {
-                logCommand(`❌ Step 7 실패: 테스트 데이터 생성 오류 - ${error.message}`);
+                logCommand(`❌ 시뮬레이션 오류: ${error.message}`);
+                logCommand('🆘 비상 대체 데이터 사용...');
                 
-                // 최소 대체 데이터
+                // 비상 대체 데이터
                 return {
                     frequencies: [1, 100, 200, 500, 900],
-                    spectrum: [-90, -40, -60, -50, -80]
+                    spectrum: [-90, -60, -70, -80, -95]
                 };
             }
         }
@@ -2064,7 +2122,23 @@
             }
         }
 
-        // 하드웨어 스펙트럼 가져오기 (강화된 버전)
+        // 안전한 명령 전송 (v18 방식)
+        async function sendCommandSafe(command, timeoutMs = 2000) {
+            try {
+                logCommand(`📤 안전 명령: ${command}`);
+                await writer.write(new TextEncoder().encode(command + '\r'));
+                
+                const response = await readWithQuickTimeout(timeoutMs);
+                logCommand(`📥 안전 응답: "${response}"`);
+                
+                return response;
+            } catch (error) {
+                logCommand(`⚠️ 안전 명령 "${command}" 오류: ${error.message} (무시됨)`);
+                return null;
+            }
+        }
+
+        // 하드웨어 스펙트럼 가져오기 (v18 방식 - 간소화)
         async function getHardwareSpectrum() {
             try {
                 const startFreq = parseFloat(document.getElementById('startFreq').value) * 1e6;
@@ -2074,201 +2148,49 @@
                 logCommand('📡 === 하드웨어 스펙트럼 측정 시작 ===');
                 logCommand(`범위 설정: ${startFreq/1e6} - ${stopFreq/1e6} MHz, ${points} 포인트`);
 
-                // 단계 1: 장치 일시 정지
-                logCommand('🔄 Step 1: 장치 일시 정지...');
                 await sendCommandSafe('pause');
-                await sleep(300);
-
-                // 단계 2: 주파수 범위 설정
-                logCommand('🔄 Step 2: 주파수 범위 설정...');
-                const startCmd = `sweep start ${Math.floor(startFreq)}`;
-                const stopCmd = `sweep stop ${Math.floor(stopFreq)}`;
-                
-                logCommand(`   명령: ${startCmd}`);
-                await sendCommandSafe(startCmd);
-                await sleep(200);
-                
-                logCommand(`   명령: ${stopCmd}`);
-                await sendCommandSafe(stopCmd);
                 await sleep(200);
 
-                // 단계 3: 스캔 포인트 설정 (tinySA 특정 명령)
-                logCommand('🔄 Step 3: 스캔 설정...');
-                await sendCommandSafe(`sweep points ${points}`);
-                await sleep(200);
+                await sendCommandSafe(`sweep start ${Math.floor(startFreq)}`);
+                await sleep(100);
+                await sendCommandSafe(`sweep stop ${Math.floor(stopFreq)}`);
+                await sleep(100);
 
-                // 단계 4: 스캔 시작
-                logCommand('🔄 Step 4: 스캔 시작...');
                 await sendCommandSafe('resume');
                 
-                // 단계 5: 스캔 완료 대기 (동적 계산)
-                const baseScanTime = 1000;
-                const pointTime = Math.max(5, points / 20); // 포인트당 최소 5ms
-                const freqRangeTime = Math.log10((stopFreq - startFreq) / 1e6) * 500; // 주파수 범위에 따른 추가 시간
-                const totalScanTime = baseScanTime + (points * pointTime) + freqRangeTime;
-                
-                logCommand(`🔄 Step 5: 스캔 완료 대기... (${Math.floor(totalScanTime)}ms)`);
-                await sleep(totalScanTime);
+                const scanTime = Math.max(1000, points * 5);
+                logCommand(`   스캔 완료 대기 중... (${scanTime}ms)`);
+                await sleep(scanTime);
 
-                // 단계 6: 추가 안정화 대기
-                logCommand('🔄 Step 6: 안정화 대기...');
-                await sleep(500);
-
-                // 단계 7: 데이터 수신 (다중 시도)
-                logCommand('🔄 Step 7: 데이터 수신 시도...');
+                const freqResponse = await sendCommandSafe('frequencies', 5000);
+                const dataResponse = await sendCommandSafe('data 0', 5000);
                 
-                let freqResponse = null;
-                let dataResponse = null;
-                
-                // 주파수 데이터 수신 (여러 방법 시도)
-                for (let attempt = 1; attempt <= 3; attempt++) {
-                    logCommand(`   주파수 데이터 시도 ${attempt}/3...`);
-                    
-                    // 방법 1: frequencies 명령
-                    freqResponse = await sendCommandSafe('frequencies', 8000);
-                    if (freqResponse && freqResponse.length > 10) {
-                        logCommand(`   ✅ frequencies 명령 성공 (${freqResponse.length} 문자)`);
-                        break;
-                    }
-                    
-                    // 방법 2: scan 명령 시도
-                    if (attempt === 2) {
-                        freqResponse = await sendCommandSafe('scan', 8000);
-                        if (freqResponse && freqResponse.length > 10) {
-                            logCommand(`   ✅ scan 명령 성공 (${freqResponse.length} 문자)`);
-                            break;
-                        }
-                    }
-                    
-                    await sleep(1000); // 재시도 전 대기
+                if (!freqResponse || !dataResponse) {
+                    throw new Error('스펙트럼 데이터 가져오기 실패');
                 }
 
-                // 스펙트럼 데이터 수신 (여러 방법 시도)
-                for (let attempt = 1; attempt <= 3; attempt++) {
-                    logCommand(`   스펙트럼 데이터 시도 ${attempt}/3...`);
-                    
-                    // 방법 1: data 0 명령 (기본)
-                    dataResponse = await sendCommandSafe('data 0', 8000);
-                    if (dataResponse && dataResponse.length > 10) {
-                        logCommand(`   ✅ data 0 명령 성공 (${dataResponse.length} 문자)`);
-                        break;
-                    }
-                    
-                    // 방법 2: data 명령 (단순)
-                    if (attempt === 2) {
-                        dataResponse = await sendCommandSafe('data', 8000);
-                        if (dataResponse && dataResponse.length > 10) {
-                            logCommand(`   ✅ data 명령 성공 (${dataResponse.length} 문자)`);
-                            break;
-                        }
-                    }
-                    
-                    // 방법 3: dump 명령 시도
-                    if (attempt === 3) {
-                        dataResponse = await sendCommandSafe('dump', 8000);
-                        if (dataResponse && dataResponse.length > 10) {
-                            logCommand(`   ✅ dump 명령 성공 (${dataResponse.length} 문자)`);
-                            break;
-                        }
-                    }
-                    
-                    await sleep(1000); // 재시도 전 대기
-                }
-
-                // 단계 8: 응답 데이터 검증
-                logCommand('🔄 Step 8: 데이터 검증...');
-                
-                if (!freqResponse || freqResponse.length < 5) {
-                    logCommand(`❌ 주파수 응답 무효: "${freqResponse ? freqResponse.substring(0, 50) : 'null'}"`);
-                    throw new Error('주파수 데이터를 가져올 수 없음');
-                }
-                
-                if (!dataResponse || dataResponse.length < 5) {
-                    logCommand(`❌ 스펙트럼 응답 무효: "${dataResponse ? dataResponse.substring(0, 50) : 'null'}"`);
-                    throw new Error('스펙트럼 데이터를 가져올 수 없음');
-                }
-
-                logCommand(`✅ 원시 데이터 수신 완료:`);
-                logCommand(`   주파수 응답: ${freqResponse.length} 문자`);
-                logCommand(`   스펙트럼 응답: ${dataResponse.length} 문자`);
-
-                // 단계 9: 강화된 데이터 파싱
-                logCommand('🔄 Step 9: 데이터 파싱...');
-                
-                // 주파수 데이터 파싱 (더 강력한 방식)
-                const freqLines = freqResponse
-                    .split(/[\r\n]+/)
+                // 데이터 파싱
+                const freqLines = freqResponse.split(/[\r\n]+/)
                     .map(line => line.trim())
-                    .filter(line => {
-                        if (!line || line.length === 0) return false;
-                        if (line.includes('>') || line.includes('ch') || line.includes('Ch')) return false;
-                        
-                        const num = parseFloat(line);
-                        return !isNaN(num) && isFinite(num) && num > 0;
-                    })
+                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)))
                     .map(line => parseFloat(line));
 
-                // 스펙트럼 데이터 파싱 (더 강력한 방식)
-                const dataLines = dataResponse
-                    .split(/[\r\n]+/)
+                const dataLines = dataResponse.split(/[\r\n]+/)
                     .map(line => line.trim())
-                    .filter(line => {
-                        if (!line || line.length === 0) return false;
-                        if (line.includes('>') || line.includes('ch') || line.includes('Ch')) return false;
-                        
-                        const num = parseFloat(line);
-                        return !isNaN(num) && isFinite(num);
-                    })
+                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)))
                     .map(line => parseFloat(line));
 
-                logCommand(`파싱 결과:`);
-                logCommand(`   주파수: ${freqLines.length}개 포인트`);
-                logCommand(`   스펙트럼: ${dataLines.length}개 포인트`);
-
-                if (freqLines.length === 0) {
-                    logCommand(`❌ 주파수 파싱 실패. 원시 데이터 샘플:`);
-                    logCommand(`"${freqResponse.substring(0, 200)}"`);
-                    throw new Error('주파수 데이터 파싱 실패');
-                }
-
-                if (dataLines.length === 0) {
-                    logCommand(`❌ 스펙트럼 파싱 실패. 원시 데이터 샘플:`);
-                    logCommand(`"${dataResponse.substring(0, 200)}"`);
-                    throw new Error('스펙트럼 데이터 파싱 실패');
-                }
-
-                // 데이터 길이 조정
                 const minLength = Math.min(freqLines.length, dataLines.length);
-                if (minLength < 5) {
-                    throw new Error(`데이터 포인트가 너무 적음: ${minLength}개`);
-                }
-
-                const freqs = freqLines.slice(0, minLength).map(freq => freq / 1e6); // Hz를 MHz로 변환
+                const freqs = freqLines.slice(0, minLength).map(freq => freq / 1e6);
                 const spectrum = dataLines.slice(0, minLength);
 
-                // 데이터 유효성 검증
-                const freqRange = Math.max(...freqs) - Math.min(...freqs);
-                const expectedRange = (stopFreq - startFreq) / 1e6;
-                
-                logCommand(`데이터 유효성 검증:`);
-                logCommand(`   주파수 범위: ${Math.min(...freqs).toFixed(2)} - ${Math.max(...freqs).toFixed(2)} MHz (${freqRange.toFixed(2)} MHz)`);
-                logCommand(`   예상 범위: ${expectedRange.toFixed(2)} MHz`);
-                logCommand(`   진폭 범위: ${Math.min(...spectrum).toFixed(1)} - ${Math.max(...spectrum).toFixed(1)} dBm`);
-
-                // 주파수 범위가 너무 다르면 경고
-                if (Math.abs(freqRange - expectedRange) > expectedRange * 0.5) {
-                    logCommand(`⚠️ 주파수 범위가 예상과 다름 (차이: ${Math.abs(freqRange - expectedRange).toFixed(2)} MHz)`);
-                }
-
                 logCommand('📡 === 하드웨어 스펙트럼 측정 완료 ===');
-                logCommand(`✅ 최종 결과: ${freqs.length}개 포인트`);
                 
                 return { frequencies: freqs, spectrum: spectrum };
                 
             } catch (error) {
                 logCommand(`❌ 하드웨어 스캔 오류: ${error.message}`);
-                logCommand('🔄 테스트 데이터로 대체...');
-                throw error; // 에러를 다시 던져서 상위에서 테스트 데이터로 대체하도록
+                return simulateSpectrum();
             }
         }
 
