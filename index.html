@@ -904,7 +904,7 @@
         // 개선된 차트 완전 리셋 함수
         function resetChartCompletely() {
             try {
-                logCommand('🔄 완전한 차트 리셋 시작...');
+                logCommand('🔄 Complete chart reset starting...');
                 
                 // 글로벌 데이터 완전 초기화
                 frequencies = [];
@@ -912,7 +912,7 @@
                 
                 // 차트가 존재하면 완전히 파괴
                 if (chart) {
-                    logCommand('   기존 차트 완전 파괴 중...');
+                    logCommand('   Destroying existing chart completely...');
                     chart.destroy();
                     chart = null;
                     chartInitialized = false;
@@ -923,7 +923,7 @@
                 if (canvas) {
                     const ctx = canvas.getContext('2d');
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    logCommand('   캔버스 클리어 완료');
+                    logCommand('   Canvas cleared');
                 }
                 
                 // 마커 정보 리셋
@@ -932,11 +932,11 @@
                     markerElement.textContent = 'Click on the chart to set marker';
                 }
                 
-                logCommand('✅ 차트 완전 리셋 완료');
+                logCommand('✅ Complete chart reset finished');
                 return true;
                 
             } catch (error) {
-                logCommand(`❌ 차트 리셋 오류: ${error.message}`);
+                logCommand(`❌ Chart reset error: ${error.message}`);
                 return false;
             }
         }
@@ -945,7 +945,7 @@
         function initChart() {
             return new Promise((resolve, reject) => {
                 try {
-                    logCommand('📈 차트 초기화 시작...');
+                    logCommand('📈 Chart initialization starting...');
                     updateDebugInfo('Initializing chart...');
                     
                     // Chart.js 라이브러리 확인
@@ -962,7 +962,7 @@
                     // 부모 컨테이너 크기 확인
                     const container = canvas.parentElement;
                     if (container.clientWidth === 0 || container.clientHeight === 0) {
-                        logCommand('⚠️ 컨테이너 크기가 0입니다. 100ms 후 재시도...');
+                        logCommand('⚠️ Container size is 0. Retrying in 100ms...');
                         setTimeout(() => {
                             initChart().then(resolve).catch(reject);
                         }, 100);
@@ -977,13 +977,13 @@
                     
                     // 기존 차트 완전 파괴
                     if (chart) {
-                        logCommand('   기존 차트 파괴 중...');
+                        logCommand('   Destroying existing chart...');
                         chart.destroy();
                         chart = null;
                     }
                     
                     // 새 차트 생성
-                    logCommand('   새 차트 인스턴스 생성 중...');
+                    logCommand('   Creating new chart instance...');
                     chart = new Chart(ctx, {
                         type: 'line',
                         data: {
@@ -1112,14 +1112,14 @@
                     });
                     
                     chartInitialized = true;
-                    logCommand('✅ 차트 초기화 성공');
+                    logCommand('✅ Chart initialization successful');
                     updateDebugInfo('Chart initialization complete');
                     
                     resolve(true);
                     
                 } catch (error) {
                     chartInitialized = false;
-                    logCommand(`❌ 차트 초기화 실패: ${error.message}`);
+                    logCommand(`❌ Chart initialization failed: ${error.message}`);
                     updateDebugInfo(`Chart initialization failed: ${error.message}`);
                     console.error('Chart initialization error:', error);
                     reject(error);
@@ -1130,7 +1130,7 @@
         // 개선된 차트 테스트 함수
         async function testChart() {
             try {
-                logCommand('🧪 차트 테스트 시작...');
+                logCommand('🧪 Chart test starting...');
                 updateDebugInfo('Running chart test...');
                 
                 // 차트 완전 리셋 후 재초기화
@@ -1165,9 +1165,9 @@
                     testData.push(amp);
                 }
                 
-                logCommand(`테스트 데이터 생성: ${testFreqs.length} 포인트`);
-                logCommand(`주파수 범위: ${testFreqs[0].toFixed(1)} - ${testFreqs[testFreqs.length-1].toFixed(1)} MHz`);
-                logCommand(`신호세기 범위: ${Math.min(...testData).toFixed(1)} - ${Math.max(...testData).toFixed(1)} dBm`);
+                logCommand(`Test data generated: ${testFreqs.length} points`);
+                logCommand(`Frequency range: ${testFreqs[0].toFixed(1)} - ${testFreqs[testFreqs.length-1].toFixed(1)} MHz`);
+                logCommand(`Amplitude range: ${Math.min(...testData).toFixed(1)} - ${Math.max(...testData).toFixed(1)} dBm`);
                 
                 // 차트 데이터 업데이트 (더 안전한 방법)
                 chart.data.labels = testFreqs.map(f => f.toFixed(1));
@@ -1180,23 +1180,23 @@
                 frequencies = [...testFreqs];
                 spectrumData = [...testData];
                 
-                logCommand('✅ 차트 테스트 성공');
+                logCommand('✅ Chart test successful');
                 updateDebugInfo('Chart test complete - Actual data displayed');
                 
                 // 상태 업데이트
                 document.getElementById('statusDisplay').textContent = 
-                    `테스트 데이터 로드됨 - ${testFreqs.length} 포인트 (${testFreqs[0].toFixed(1)}-${testFreqs[testFreqs.length-1].toFixed(1)} MHz)`;
+                    `Test data loaded - ${testFreqs.length} points (${testFreqs[0].toFixed(1)}-${testFreqs[testFreqs.length-1].toFixed(1)} MHz)`;
                 
                 // 차트 렌더링 확인
                 setTimeout(() => {
                     const canvas = document.getElementById('spectrumChart');
                     if (canvas) {
-                        logCommand(`차트 렌더링 확인: 캔버스 크기 ${canvas.width}x${canvas.height}`);
+                        logCommand(`Chart rendering confirmed: Canvas size ${canvas.width}x${canvas.height}`);
                     }
                 }, 100);
                 
             } catch (error) {
-                logCommand(`❌ 차트 테스트 실패: ${error.message}`);
+                logCommand(`❌ Chart test failed: ${error.message}`);
                 updateDebugInfo(`Chart test failed: ${error.message}`);
                 console.error('Chart test error:', error);
             }
@@ -1274,32 +1274,33 @@
             }
         }
 
-        // Safe command sending with timeout
-        async function sendCommandSafe(command, timeoutMs = 3000) {
+        // 개선된 명령 전송 및 데이터 읽기 (제조사 코드 참고)
+        async function sendCommandAndFetchData(command, timeoutMs = 10000) {
             try {
                 logCommand(`📤 Command: ${command}`);
                 await writer.write(new TextEncoder().encode(command + '\r'));
                 
-                const response = await readWithQuickTimeout(timeoutMs);
-                logCommand(`📥 Response: "${response}"`);
+                const response = await fetchDataUntilPrompt(timeoutMs);
+                logCommand(`📥 Response: "${response}" (${response.length} chars)`);
                 
                 return response;
             } catch (error) {
-                logCommand(`⚠️ Command "${command}" error: ${error.message} (ignored)`);
+                logCommand(`⚠️ Command "${command}" error: ${error.message}`);
                 return null;
             }
         }
 
-        // Quick timeout read with better error handling
-        async function readWithQuickTimeout(timeoutMs) {
-            return new Promise(async (resolve) => {
-                let response = '';
+        // 제조사 코드의 fetch_data() 함수를 참고한 정확한 데이터 읽기
+        async function fetchDataUntilPrompt(timeoutMs) {
+            return new Promise(async (resolve, reject) => {
+                let result = '';
+                let line = '';
                 let completed = false;
                 
                 const timeout = setTimeout(() => {
                     if (!completed) {
                         completed = true;
-                        resolve(response);
+                        resolve(result);
                     }
                 }, timeoutMs);
                 
@@ -1314,83 +1315,62 @@
                         if (done || completed) break;
                         
                         const text = new TextDecoder().decode(value);
-                        response += text;
                         
-                        if (response.length > 50 || response.includes('>') || response.includes('\n')) {
-                            break;
-                        }
-                    }
-                } catch (error) {
-                    // Ignore read errors
-                }
-                
-                if (!completed) {
-                    completed = true;
-                    clearTimeout(timeout);
-                    resolve(response);
-                }
-            });
-        }
-
-        // Enhanced data reading with proper timeout
-        async function readDataWithTimeout(timeoutMs, expectedLines = null) {
-            return new Promise(async (resolve) => {
-                let response = '';
-                let completed = false;
-                let lines = [];
-                
-                const timeout = setTimeout(() => {
-                    if (!completed) {
-                        completed = true;
-                        resolve(response);
-                    }
-                }, timeoutMs);
-                
-                try {
-                    let lastDataTime = Date.now();
-                    const IDLE_TIMEOUT = 2000; // 2 seconds without data
-                    
-                    while (!completed) {
-                        const readPromise = reader.read();
-                        const { value, done } = await Promise.race([
-                            readPromise,
-                            new Promise((_, rej) => setTimeout(() => rej(new Error('read timeout')), 1000))
-                        ]);
-                        
-                        if (done || completed) break;
-                        
-                        const text = new TextDecoder().decode(value);
-                        if (text.trim().length > 0) {
-                            response += text;
-                            lastDataTime = Date.now();
+                        for (let i = 0; i < text.length; i++) {
+                            const c = text.charAt(i);
                             
-                            // Count lines
-                            lines = response.split(/[\r\n]+/).filter(line => line.trim().length > 0);
+                            if (c === '\r') {
+                                continue; // ignore CR
+                            }
                             
-                            // If we have expected number of lines, we're done
-                            if (expectedLines && lines.length >= expectedLines) {
-                                logCommand(`✅ Received expected ${expectedLines} lines of data`);
+                            line += c;
+                            
+                            if (c === '\n') {
+                                result += line;
+                                line = '';
+                            } else if (line.endsWith('ch>')) {
+                                // stop on prompt
+                                completed = true;
                                 break;
                             }
                         }
-                        
-                        // Check for idle timeout
-                        if (Date.now() - lastDataTime > IDLE_TIMEOUT) {
-                            logCommand(`⏰ Idle timeout reached (${IDLE_TIMEOUT}ms without data)`);
-                            break;
-                        }
                     }
                 } catch (error) {
-                    // Ignore read errors but log them
-                    logCommand(`⚠️ Read error (continuing): ${error.message}`);
+                    logCommand(`⚠️ Read error: ${error.message}`);
                 }
                 
                 if (!completed) {
                     completed = true;
                     clearTimeout(timeout);
-                    resolve(response);
                 }
+                resolve(result);
             });
+        }
+
+        // 간단한 명령 전송 (응답 불필요)
+        async function sendCommand(command) {
+            try {
+                logCommand(`📤 Simple command: ${command}`);
+                await writer.write(new TextEncoder().encode(command + '\r'));
+                
+                // 명령 처리를 위한 짧은 대기
+                await sleep(100);
+                
+                // 응답이 있을 수 있으므로 짧은 시간 읽어서 버림
+                try {
+                    await Promise.race([
+                        reader.read(),
+                        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 500))
+                    ]);
+                } catch (e) {
+                    // 타임아웃이나 에러는 무시
+                }
+                
+                return true;
+            } catch (error) {
+                logCommand(`⚠️ Simple command "${command}" error: ${error.message}`);
+                return false;
+            }
         }
 
         // Connection cleanup
@@ -1501,46 +1481,27 @@
             }
         }
 
-        // Quick connection test
+        // Quick connection test (제조사 코드 참고)
         async function quickConnectionTest() {
             try {
                 logCommand('🔄 Communication test starting...');
                 
                 await sleep(200);
                 
-                logCommand('   📤 Test 1: Sending CR');
+                // 빈 명령으로 프롬프트 확인
+                logCommand('   📤 Test: Sending empty command');
                 await writer.write(new TextEncoder().encode('\r'));
                 
-                const response1 = await readWithQuickTimeout(2000);
-                logCommand(`   📥 Response 1: "${response1}" (length: ${response1.length})`);
+                const response = await fetchDataUntilPrompt(3000);
+                logCommand(`   📥 Response: "${response}" (length: ${response.length})`);
                 
-                logCommand('   📤 Test 2: Sending CRLF');
-                await writer.write(new TextEncoder().encode('\r\n'));
-                
-                const response2 = await readWithQuickTimeout(1500);
-                logCommand(`   📥 Response 2: "${response2}" (length: ${response2.length})`);
-                
-                const combinedResponse = response1 + response2;
-                logCommand(`   🔍 Combined analysis: "${combinedResponse}"`);
-                
-                if (combinedResponse.includes('ch>') || 
-                    combinedResponse.includes('Ch>') || 
-                    combinedResponse.includes('CH>')) {
-                    logCommand('   ✅ tinySA prompt "ch>" confirmed');
+                // 'ch>' 프롬프트 확인 (제조사 코드와 동일)
+                if (response.includes('ch>') || response.length === 0) {
+                    logCommand('   ✅ tinySA prompt confirmed or ready');
                     return true;
-                } else if (combinedResponse.includes('>')) {
-                    logCommand('   ✅ General prompt ">" confirmed (likely tinySA)');
-                    return true;
-                } else if (combinedResponse.length > 0) {
-                    logCommand('   ⚠️ Response received but different prompt format');
-                    if (combinedResponse.length > 3) {
-                        logCommand('   🔄 Response sufficient, attempting connection');
-                        return true;
-                    }
-                    return false;
                 } else {
-                    logCommand('   ❌ No response');
-                    return false;
+                    logCommand('   ⚠️ Unexpected response format');
+                    return response.length > 0; // 응답이 있으면 연결됨으로 간주
                 }
                 
             } catch (error) {
@@ -1549,13 +1510,15 @@
             }
         }
 
-        // Basic initialization
+        // Basic initialization (제조사 코드 참고)
         async function basicInitialize() {
             try {
                 logCommand('🔧 Basic initialization starting...');
                 
-                await sleep(300);
-                await sendCommandSafe('resume', 2000);
+                await sleep(500);
+                
+                // resume 명령으로 장비 활성화
+                await sendCommand('resume');
                 await sleep(300);
                 
                 logCommand('✅ Basic initialization complete');
@@ -1582,7 +1545,7 @@
             }
         }
 
-        // Connection diagnosis
+        // Connection diagnosis (제조사 코드 참고)
         async function diagnoseConnection() {
             if (!isConnected) {
                 logCommand('❌ Device not connected');
@@ -1591,21 +1554,46 @@
             }
 
             try {
-                logCommand('🔍 === Connection Diagnosis Start ===');
+                logCommand('🔍 === Connection Diagnosis (Manufacturer Method) ===');
                 
-                logCommand('1️⃣ Basic communication check...');
-                const basicTest = await sendCommandSafe('', 1500);
-                logCommand(`   Basic response: "${basicTest || 'No response'}"`);
+                // 1단계: 기본 통신 확인
+                logCommand('1️⃣ Basic prompt test...');
+                await writer.write(new TextEncoder().encode('\r'));
+                const promptResponse = await fetchDataUntilPrompt(3000);
+                logCommand(`   Prompt response: "${promptResponse}" (${promptResponse.length} chars)`);
+                
+                if (promptResponse.includes('ch>') || promptResponse.length === 0) {
+                    logCommand('   ✅ Prompt test: PASS');
+                } else {
+                    logCommand('   ⚠️ Prompt test: UNEXPECTED');
+                }
 
-                logCommand('2️⃣ Prompt check...');
-                const promptTest = await sendCommandSafe('\r', 1500);
-                logCommand(`   Prompt: "${promptTest || 'No response'}"`);
-
-                logCommand('3️⃣ Basic command test...');
-                const resumeTest = await sendCommandSafe('resume', 2500);
-                logCommand(`   Resume response: "${resumeTest || 'No response'}"`);
+                // 2단계: resume 명령 테스트
+                logCommand('2️⃣ Resume command test...');
+                const resumeResponse = await sendCommandAndFetchData('resume', 3000);
+                logCommand(`   Resume response: "${resumeResponse || 'No response'}" (${(resumeResponse || '').length} chars)`);
+                
+                // 3단계: 간단한 데이터 명령 테스트 (온도 측정)
+                logCommand('3️⃣ Temperature reading test...');
+                const tempResponse = await sendCommandAndFetchData('k', 5000);
+                logCommand(`   Temperature response: "${tempResponse || 'No response'}"`);
+                
+                if (tempResponse && tempResponse.trim().length > 0) {
+                    const tempLines = tempResponse.split('\n').filter(line => line.trim().length > 0 && !line.includes('ch>'));
+                    if (tempLines.length > 0) {
+                        const temp = parseFloat(tempLines[0]);
+                        if (!isNaN(temp)) {
+                            logCommand(`   ✅ Temperature: ${temp}°C - Data communication working`);
+                        } else {
+                            logCommand(`   ⚠️ Temperature parsing failed: "${tempLines[0]}"`);
+                        }
+                    }
+                } else {
+                    logCommand('   ⚠️ No temperature data received');
+                }
 
                 logCommand('🔍 === Diagnosis Complete ===');
+                logCommand('💡 If communication works but scan fails, check frequency ranges and points settings');
                 
             } catch (error) {
                 logCommand(`❌ Diagnosis error: ${error.message}`);
@@ -1907,105 +1895,128 @@
             }
         }
 
-        // Get hardware spectrum with proper timing
+        // 제조사 코드를 참고한 완전히 새로운 하드웨어 스펙트럼 측정
         async function getHardwareSpectrum() {
             try {
                 const startFreq = parseFloat(document.getElementById('startFreq').value) * 1e6;
                 const stopFreq = parseFloat(document.getElementById('stopFreq').value) * 1e6;
                 const points = parseInt(document.getElementById('scanPoints').value);
 
-                logCommand('📡 === Hardware Spectrum Measurement Start ===');
-                logCommand(`Range setup: ${startFreq/1e6} - ${stopFreq/1e6} MHz, ${points} points`);
+                logCommand('📡 === Hardware Spectrum Measurement (New Method) ===');
+                logCommand(`Parameters: ${startFreq/1e6} - ${stopFreq/1e6} MHz, ${points} points`);
 
-                updateProgress(15, 'Configuring hardware...');
+                updateProgress(15, 'Pausing device...');
                 
-                // Configuration with proper delays
-                await sendCommandSafe('pause');
-                await sleep(300);
+                // 1단계: 장비 일시정지 (제조사 코드와 동일)
+                await sendCommand('pause');
+                await sleep(500);
 
-                await sendCommandSafe(`sweep start ${Math.floor(startFreq)}`);
-                await sleep(200);
-                await sendCommandSafe(`sweep stop ${Math.floor(stopFreq)}`);
-                await sleep(200);
-                await sendCommandSafe(`sweep points ${points}`);
-                await sleep(200);
-
-                updateProgress(25, 'Starting hardware scan...');
-                await sendCommandSafe('resume');
+                updateProgress(25, 'Sending scan command...');
                 
-                // Calculate proper scan time based on points and frequency range
-                const freqRange = stopFreq - startFreq;
-                const baseScanTime = 3000; // 3 seconds base time
-                const pointsFactor = Math.max(1, points / 101); // Scale with points
-                const rangeFactor = Math.max(1, freqRange / 900e6); // Scale with frequency range
-                const scanTime = baseScanTime * pointsFactor * rangeFactor;
+                // 2단계: scan 명령 전송 (제조사 코드의 핵심 명령)
+                const scanCommand = `scan ${Math.floor(startFreq)} ${Math.floor(stopFreq)} ${points}`;
+                logCommand(`   Scan command: ${scanCommand}`);
+                await sendCommand(scanCommand);
                 
-                logCommand(`   Calculated scan time: ${scanTime}ms (base: ${baseScanTime}ms, points factor: ${pointsFactor.toFixed(2)}, range factor: ${rangeFactor.toFixed(2)})`);
+                // 스캔 시간 계산 및 대기
+                const scanTime = Math.max(3000, points * 30); // 포인트당 30ms, 최소 3초
+                const maxScanTime = Math.min(scanTime, 20000); // 최대 20초
                 
-                // Wait for scan completion with progress updates
+                logCommand(`   Calculated scan time: ${maxScanTime}ms`);
+                
+                // 스캔 완료 대기 (진행률 표시)
                 const progressSteps = 10;
-                const stepTime = scanTime / progressSteps;
+                const stepTime = maxScanTime / progressSteps;
                 
                 for (let i = 0; i < progressSteps; i++) {
                     if (scanAborted) {
                         throw new Error('Scan aborted by user');
                     }
                     
-                    const progress = 25 + (i + 1) * 4; // Progress from 25% to 65%
-                    updateProgress(progress, `Hardware scanning... ${progress-24}/${progressSteps}`);
+                    const progress = 25 + (i + 1) * 4; // 25%에서 65%까지
+                    updateProgress(progress, `Scanning... ${i+1}/${progressSteps}`);
                     await sleep(stepTime);
                 }
 
-                updateProgress(70, 'Scan complete, reading data...');
+                updateProgress(70, 'Reading frequencies...');
                 
-                // Read frequency data with longer timeout
-                logCommand('   Reading frequency data...');
-                const freqResponse = await sendCommandSafe('frequencies', 8000);
+                // 3단계: 주파수 리스트 읽기 (제조사 코드와 동일)
+                logCommand('   📤 Fetching frequencies...');
+                const freqResponse = await sendCommandAndFetchData('frequencies', 15000);
                 
-                updateProgress(80, 'Reading amplitude data...');
-                
-                // Read amplitude data with longer timeout  
-                logCommand('   Reading amplitude data...');
-                const dataResponse = await sendCommandSafe('data 0', 8000);
-                
-                updateProgress(85, 'Processing received data...');
-                
-                if (!freqResponse || !dataResponse) {
-                    throw new Error('Failed to get spectrum data');
+                if (!freqResponse) {
+                    throw new Error('Failed to get frequency data');
                 }
 
-                // Enhanced data parsing
-                const freqLines = freqResponse.split(/[\r\n]+/)
-                    .map(line => line.trim())
-                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)) && !line.includes('>'))
-                    .map(line => parseFloat(line));
+                updateProgress(80, 'Reading signal data...');
+                
+                // 4단계: 신호세기 데이터 읽기 (제조사 코드: data 0)
+                logCommand('   📤 Fetching signal data...');
+                const dataResponse = await sendCommandAndFetchData('data 0', 15000);
+                
+                if (!dataResponse) {
+                    throw new Error('Failed to get signal data');
+                }
 
-                const dataLines = dataResponse.split(/[\r\n]+/)
+                updateProgress(85, 'Processing data...');
+                
+                // 5단계: 데이터 파싱 (제조사 코드 방식 적용)
+                logCommand('   📊 Parsing frequency data...');
+                const freqLines = freqResponse.split('\n')
                     .map(line => line.trim())
-                    .filter(line => line.length > 0 && !isNaN(parseFloat(line)) && !line.includes('>'))
-                    .map(line => parseFloat(line));
+                    .filter(line => line.length > 0 && !line.includes('ch>'))
+                    .map(line => {
+                        const freq = parseFloat(line);
+                        return isNaN(freq) ? null : freq;
+                    })
+                    .filter(freq => freq !== null);
 
-                logCommand(`   Parsed data: ${freqLines.length} frequencies, ${dataLines.length} amplitudes`);
+                logCommand('   📊 Parsing signal data...');
+                const dataLines = dataResponse.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0 && !line.includes('ch>'))
+                    .map(line => {
+                        const amplitude = parseFloat(line);
+                        return isNaN(amplitude) ? null : amplitude;
+                    })
+                    .filter(amplitude => amplitude !== null);
+
+                logCommand(`   ✅ Parsed: ${freqLines.length} frequencies, ${dataLines.length} amplitudes`);
                 
                 if (freqLines.length === 0 || dataLines.length === 0) {
-                    throw new Error('No valid numeric data received');
+                    throw new Error('No valid data received');
                 }
 
+                // 6단계: 데이터 검증 및 정리
                 const minLength = Math.min(freqLines.length, dataLines.length);
-                if (minLength < points * 0.8) { // At least 80% of expected points
-                    logCommand(`⚠️ Warning: Received ${minLength} points, expected ${points}`);
+                
+                if (minLength < points * 0.5) { // 최소 50% 이상의 데이터 필요
+                    logCommand(`⚠️ Warning: Only received ${minLength} points, expected ${points}`);
                 }
                 
-                const freqs = freqLines.slice(0, minLength).map(freq => freq / 1e6);
+                const freqs = freqLines.slice(0, minLength).map(freq => freq / 1e6); // Hz to MHz
                 const spectrum = dataLines.slice(0, minLength);
 
-                logCommand('📡 === Hardware Spectrum Measurement Complete ===');
-                logCommand(`   Final data: ${freqs.length} points from ${freqs[0]?.toFixed(2)} to ${freqs[freqs.length-1]?.toFixed(2)} MHz`);
+                // 7단계: 장비 재개 (제조사 코드와 동일)
+                await sendCommand('resume');
+
+                logCommand('📡 === Hardware Measurement Complete ===');
+                logCommand(`   📊 Final result: ${freqs.length} points`);
+                logCommand(`   📈 Frequency range: ${freqs[0]?.toFixed(2)} - ${freqs[freqs.length-1]?.toFixed(2)} MHz`);
+                logCommand(`   📊 Signal range: ${Math.min(...spectrum).toFixed(1)} - ${Math.max(...spectrum).toFixed(1)} dBm`);
                 
                 return { frequencies: freqs, spectrum: spectrum };
                 
             } catch (error) {
                 logCommand(`❌ Hardware scan error: ${error.message}`);
+                
+                // 오류 발생 시 장비 재개 시도
+                try {
+                    await sendCommand('resume');
+                } catch (resumeError) {
+                    logCommand(`⚠️ Failed to resume after error: ${resumeError.message}`);
+                }
+                
                 throw error;
             }
         }
@@ -2046,7 +2057,7 @@
 
         // Enhanced page load initialization
         window.addEventListener('load', async function() {
-            logCommand('🚀 === System Initialization Start ===');
+            logCommand('🚀 === System Initialization (Manufacturer Compatible) ===');
             
             try {
                 // 테마 초기화
@@ -2061,7 +2072,7 @@
                     return;
                 }
                 
-                logCommand('✅ Chart.js library load confirmed');
+                logCommand('✅ Chart.js library loaded successfully');
                 
                 // DOM 완전 로드 대기
                 await new Promise(resolve => {
@@ -2075,7 +2086,6 @@
                 // 차트 컨테이너 준비 대기
                 const chartContainer = document.querySelector('.chart-wrapper');
                 if (chartContainer) {
-                    // 컨테이너 크기 설정을 위한 대기
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
                 
@@ -2086,8 +2096,8 @@
                 
                 // Web Serial API 확인
                 if (!('serial' in navigator)) {
-                    logCommand('❌ Warning: This browser does not support Web Serial API.');
-                    logCommand('🔧 Solution: Use Chrome, Edge, Opera browsers.');
+                    logCommand('❌ Warning: Web Serial API not supported in this browser');
+                    logCommand('🔧 Solution: Please use Chrome, Edge, or Opera browsers');
                     updateDebugInfo('Web Serial API not supported');
                 } else {
                     logCommand('✅ Web Serial API supported');
@@ -2112,18 +2122,18 @@
                 window.addEventListener('resize', () => {
                     if (chart) {
                         chart.resize();
-                        logCommand('📏 Chart resized');
+                        logCommand('📏 Chart resized for window change');
                     }
                 });
                 
                 // 초기 테스트 차트 표시
                 setTimeout(async () => {
-                    logCommand('🔄 Displaying initial test chart...');
+                    logCommand('🔄 Loading initial test chart...');
                     await testChart();
                 }, 800);
                 
-                logCommand('✅ Complete system initialization finished');
-                updateDebugInfo('System initialization complete - Chart ready');
+                logCommand('✅ System initialization complete - Ready for operation');
+                updateDebugInfo('System ready - Manufacturer protocol implemented');
                 
             } catch (error) {
                 logCommand(`❌ Initialization error: ${error.message}`);
@@ -2138,7 +2148,7 @@
                         await testChart();
                         logCommand('✅ Alternative initialization successful');
                     } catch (retryError) {
-                        logCommand(`❌ Alternative initialization also failed: ${retryError.message}`);
+                        logCommand(`❌ Alternative initialization failed: ${retryError.message}`);
                     }
                 }, 2000);
             }
