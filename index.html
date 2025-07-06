@@ -1408,96 +1408,379 @@
             }
         }
 
-        // 하드웨어 상태 진단
-        async function diagnoseHardwareData() {
+        // 연결 진단
+        async function diagnoseConnection() {
             if (!isConnected) {
-                logCommand('❌ 하드웨어가 연결되지 않음');
+                logCommand('❌ 장치가 연결되지 않음');
+                alert('먼저 장치를 연결하세요.');
                 return;
             }
 
             try {
-                logCommand('🔍 === 하드웨어 데이터 진단 시작 ===');
+                logCommand('🔍 === 종합 진단 시작 ===');
                 
-                // 현재 설정 확인
-                logCommand('4️⃣ 현재 장치 설정 확인...');
-                const sweepInfo = await sendCommandSafe('sweep', 2000);
-                logCommand(`   Sweep 정보: "${sweepInfo}"`);
+                // 기본 연결 테스트
+                logCommand('1️⃣ 기본 통신 확인...');
+                const basicTest = await sendCommandSafe('', 1000);
+                logCommand(`   기본 응답: "${basicTest || '응답 없음'}"`);
+
+                logCommand('2️⃣ 프롬프트 확인...');
+                const promptTest = await sendCommandSafe('\r', 1000);
+                logCommand(`   프롬프트: "${promptTest || '응답 없음'}"`);
+
+                logCommand('3️⃣ 기본 명령 테스트...');
+                const resumeTest = await sendCommandSafe('resume', 2000);
+                logCommand(`   Resume 응답: "${resumeTest || '응답 없음'}"`);
+
+                // 하드웨어 데이터 진단 추가
+                await diagnoseHardwareData();
                 
-                // 주파수 범위 확인
-                logCommand('5️⃣ 주파수 범위 확인...');
-                const startInfo = await sendCommandSafe('sweep start', 1000);
-                const stopInfo = await sendCommandSafe('sweep stop', 1000);
-                logCommand(`   시작 주파수: "${startInfo}"`);
-                logCommand(`   종료 주파수: "${stopInfo}"`);
-                
-                // 포인트 수 확인
-                logCommand('6️⃣ 스캔 포인트 확인...');
-                const pointsInfo = await sendCommandSafe('sweep points', 1000);
-                logCommand(`   포인트 수: "${pointsInfo}"`);
-                
-                // 데이터 가용성 테스트
-                logCommand('7️⃣ 데이터 가용성 테스트...');
-                const freqTest = await sendCommandSafe('frequencies', 3000);
-                const dataTest = await sendCommandSafe('data 0', 3000);
-                
-                logCommand(`   주파수 데이터 길이: ${freqTest ? freqTest.length : 0} 문자`);
-                logCommand(`   스펙트럼 데이터 길이: ${dataTest ? dataTest.length : 0} 문자`);
-                
-                if (freqTest && freqTest.length > 20) {
-                    logCommand(`   주파수 샘플: "${freqTest.substring(0, 100)}..."`);
-                }
-                if (dataTest && dataTest.length > 20) {
-                    logCommand(`   스펙트럼 샘플: "${dataTest.substring(0, 100)}..."`);
-                }
-                
-                // 파싱 테스트
-                logCommand('8️⃣ 데이터 파싱 테스트...');
-                if (freqTest) {
-                    const freqLines = freqTest.split(/[\r\n]+/)
-                        .map(line => line.trim())
-                        .filter(line => line.length > 0);
-                    
-                    logCommand(`   전체 주파수 라인 수: ${freqLines.length}`);
-                    
-                    const validFreqs = freqLines.filter(line => {
-                        const num = parseFloat(line);
-                        return !isNaN(num) && isFinite(num) && num > 0;
-                    });
-                    
-                    logCommand(`   유효한 주파수 라인: ${validFreqs.length}`);
-                    
-                    if (validFreqs.length > 0) {
-                        logCommand(`   샘플 주파수: ${validFreqs.slice(0, 5).join(', ')}`);
-                    }
-                }
-                
-                if (dataTest) {
-                    const dataLines = dataTest.split(/[\r\n]+/)
-                        .map(line => line.trim())
-                        .filter(line => line.length > 0);
-                    
-                    logCommand(`   전체 스펙트럼 라인 수: ${dataLines.length}`);
-                    
-                    const validData = dataLines.filter(line => {
-                        const num = parseFloat(line);
-                        return !isNaN(num) && isFinite(num);
-                    });
-                    
-                    logCommand(`   유효한 스펙트럼 라인: ${validData.length}`);
-                    
-                    if (validData.length > 0) {
-                        logCommand(`   샘플 스펙트럼: ${validData.slice(0, 5).join(', ')}`);
-                    }
-                }
-                
-                logCommand('🔍 === 하드웨어 데이터 진단 완료 ===');
+                logCommand('🔍 === 종합 진단 완료 ===');
                 
             } catch (error) {
-                logCommand(`❌ 하드웨어 진단 오류: ${error.message}`);
+                logCommand(`❌ 진단 오류: ${error.message}`);
             }
         }
 
-        // 연결 진단 (강화된 버전)
+        // 빠른 타임아웃 읽기
+        async function readWithQuickTimeout(timeoutMs) {
+            return new Promise(async (resolve) => {
+                let response = '';
+                let completed = false;
+                
+                const timeout = setTimeout(() => {
+                    if (!completed) {
+                        completed = true;
+                        resolve(response);
+                    }
+                }, timeoutMs);
+                
+                try {
+                    while (!completed) {
+                        const readPromise = reader.read();
+                        const { value, done } = await Promise.race([
+                            readPromise,
+                            new Promise((_, rej) => setTimeout(() => rej(new Error('read timeout')), 500))
+                        ]);
+                        
+                        if (done || completed) break;
+                        
+                        const text = new TextDecoder().decode(value);
+                        response += text;
+                        
+                        if (response.length > 10 || response.includes('>')) {
+                            break;
+                        }
+                    }
+                } catch (error) {
+                    // 읽기 오류 무시
+                }
+                
+                if (!completed) {
+                    completed = true;
+                    clearTimeout(timeout);
+                    resolve(response);
+                }
+            });
+        }
+
+        // 연결 정리
+        async function cleanupConnection() {
+            try {
+                if (reader) {
+                    try { 
+                        await reader.cancel();
+                        await reader.releaseLock(); 
+                    } catch (e) { 
+                        logCommand(`리더 정리 오류: ${e.message}`);
+                    }
+                    reader = null;
+                }
+                
+                if (writer) {
+                    try { 
+                        await writer.releaseLock(); 
+                    } catch (e) { 
+                        logCommand(`라이터 정리 오류: ${e.message}`);
+                    }
+                    writer = null;
+                }
+                
+                if (serialPort && serialPort.readable) {
+                    try { 
+                        await serialPort.close(); 
+                    } catch (e) { 
+                        logCommand(`포트 닫기 오류: ${e.message}`);
+                    }
+                }
+            } catch (error) {
+                logCommand(`정리 오류: ${error.message}`);
+            }
+        }
+
+        // 장치 연결
+        async function connectDevice() {
+            if (!('serial' in navigator)) {
+                alert('이 브라우저는 Web Serial API를 지원하지 않습니다. Chrome 기반 브라우저를 사용하세요.');
+                return;
+            }
+
+            try {
+                updateConnectionStatus('connecting', '1단계: 포트 선택 중...');
+                
+                logCommand('🔍 시리얼 포트 요청 중...');
+                
+                try {
+                    serialPort = await navigator.serial.requestPort();
+                } catch (portError) {
+                    if (portError.message.includes('No port selected')) {
+                        logCommand('⚠️ 사용자가 포트 선택을 취소함');
+                        updateConnectionStatus('disconnected', '포트 선택 취소됨');
+                        return;
+                    } else {
+                        logCommand(`❌ 포트 선택 오류: ${portError.message}`);
+                        updateConnectionStatus('disconnected', `포트 선택 실패: ${portError.message}`);
+                        return;
+                    }
+                }
+
+                const portInfo = serialPort.getInfo();
+                logCommand(`✅ 포트 선택됨: VID=0x${portInfo.usbVendorId?.toString(16) || '????'}, PID=0x${portInfo.usbProductId?.toString(16) || '????'}`);
+
+                const selectedBaudRate = document.getElementById('baudRate').value;
+                const baudRate = parseInt(selectedBaudRate);
+
+                updateConnectionStatus('connecting', `2단계: ${baudRate} bps로 연결 중...`);
+                logCommand(`🔧 보드레이트: ${baudRate} bps`);
+
+                await cleanupConnection();
+                
+                await serialPort.open({ 
+                    baudRate: baudRate,
+                    dataBits: 8,
+                    stopBits: 1,
+                    parity: 'none',
+                    flowControl: 'none',
+                    bufferSize: 255
+                });
+
+                logCommand(`📡 포트가 성공적으로 열림 (${baudRate} bps)`);
+
+                reader = serialPort.readable.getReader();
+                writer = serialPort.writable.getWriter();
+                logCommand(`   • 리더/라이터 설정 완료`);
+
+                await sleep(300);
+
+                updateConnectionStatus('connecting', `3단계: 통신 테스트 (${baudRate} bps)`);
+                const testResult = await quickConnectionTest();
+                
+                if (testResult) {
+                    logCommand(`✅ 연결 성공!`);
+                    updateConnectionStatus('connected', `tinySA 연결됨 (${baudRate} bps)`);
+                    
+                    await basicInitialize();
+                    return;
+                } else {
+                    throw new Error('통신 테스트 실패');
+                }
+                
+            } catch (error) {
+                updateConnectionStatus('disconnected', `연결 실패: ${error.message}`);
+                logCommand(`🚨 최종 연결 실패: ${error.message}`);
+                await cleanupConnection();
+            }
+        }
+
+        // 빠른 연결 테스트
+        async function quickConnectionTest() {
+            try {
+                logCommand('🔄 통신 테스트 시작...');
+                
+                await sleep(100);
+                
+                logCommand('   📤 테스트 1: CR 전송');
+                await writer.write(new TextEncoder().encode('\r'));
+                
+                const response1 = await readWithQuickTimeout(1500);
+                logCommand(`   📥 응답 1: "${response1}" (길이: ${response1.length})`);
+                
+                logCommand('   📤 테스트 2: CRLF 전송');
+                await writer.write(new TextEncoder().encode('\r\n'));
+                
+                const response2 = await readWithQuickTimeout(1000);
+                logCommand(`   📥 응답 2: "${response2}" (길이: ${response2.length})`);
+                
+                const combinedResponse = response1 + response2;
+                logCommand(`   🔍 결합 분석: "${combinedResponse}"`);
+                
+                if (combinedResponse.includes('ch>') || 
+                    combinedResponse.includes('Ch>') || 
+                    combinedResponse.includes('CH>')) {
+                    logCommand('   ✅ tinySA 프롬프트 "ch>" 확인됨');
+                    return true;
+                } else if (combinedResponse.includes('>')) {
+                    logCommand('   ✅ 일반 프롬프트 ">" 확인됨 (tinySA일 가능성 높음)');
+                    return true;
+                } else if (combinedResponse.length > 0) {
+                    logCommand('   ⚠️ 응답 수신되었으나 프롬프트 형식이 다름');
+                    if (combinedResponse.length > 3) {
+                        logCommand('   🔄 응답이 충분함, 연결 시도');
+                        return true;
+                    }
+                    return false;
+                } else {
+                    logCommand('   ❌ 응답 없음');
+                    return false;
+                }
+                
+            } catch (error) {
+                logCommand(`❌ 연결 테스트 실패: ${error.message}`);
+                return false;
+            }
+        }
+
+        // 기본 초기화
+        async function basicInitialize() {
+            try {
+                logCommand('🔧 기본 초기화 시작...');
+                
+                await sleep(200);
+                await sendCommandSafe('resume', 1000);
+                await sleep(200);
+                
+                logCommand('✅ 기본 초기화 완료');
+                
+            } catch (error) {
+                logCommand(`⚠️ 초기화 경고: ${error.message} (정상 작동 가능)`);
+            }
+        }
+
+        // 장치 연결 해제
+        async function disconnectDevice() {
+            try {
+                logCommand('🔌 연결 해제 시작...');
+                updateConnectionStatus('connecting', '연결 해제 중...');
+                
+                await cleanupConnection();
+                serialPort = null;
+                
+                updateConnectionStatus('disconnected', '장치 연결이 성공적으로 해제됨');
+                
+            } catch (error) {
+                logCommand(`연결 해제 오류: ${error.message}`);
+                updateConnectionStatus('disconnected', '연결 해제됨 (오류 발생)');
+            }
+        }
+
+        // 로그 지우기
+        function clearLog() {
+            const logElement = document.getElementById('commandLog');
+            if (logElement) {
+                logElement.textContent = '';
+                logCommand('📋 로그 지워짐');
+            }
+        }
+
+        // 마커 업데이트
+        function updateMarker(frequency, amplitude) {
+            const markerElement = document.getElementById('markerInfo');
+            if (markerElement) {
+                markerElement.innerHTML = `
+                    <strong>주파수:</strong> ${frequency.toFixed(2)} MHz<br>
+                    <strong>진폭:</strong> ${amplitude.toFixed(1)} dBm
+                `;
+            }
+        }
+
+        // CSV 다운로드
+        function downloadCSV() {
+            if (frequencies.length === 0 || spectrumData.length === 0) {
+                alert('먼저 스캔을 실행하세요.');
+                return;
+            }
+
+            let csvContent = "주파수(MHz),신호강도(dBm)\n";
+            for (let i = 0; i < frequencies.length; i++) {
+                csvContent += `${frequencies[i].toFixed(3)},${spectrumData[i].toFixed(2)}\n`;
+            }
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `spectrum_data_${new Date().toISOString().slice(0,10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Step 4: 대기 함수
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Step 5: 로그 출력 함수
+        function logCommand(message) {
+            const logElement = document.getElementById('commandLog');
+            if (!logElement) return;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            
+            logElement.textContent += logMessage + '\n';
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            if (message.includes('❌') || message.includes('Error') || message.includes('실패')) {
+                console.error('tinySA:', message);
+            } else if (message.includes('⚠️') || message.includes('Warning') || message.includes('경고')) {
+                console.warn('tinySA:', message);
+            } else if (message.includes('✅') || message.includes('Success') || message.includes('성공')) {
+                console.log('tinySA:', message);
+            } else {
+                console.info('tinySA:', message);
+            }
+        }
+
+        // 연결 상태 업데이트
+        function updateConnectionStatus(status, message) {
+            const statusElement = document.getElementById('connectionStatus');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const diagnoseBtn = document.getElementById('diagnoseBtn');
+            
+            if (!statusElement) return;
+            
+            statusElement.className = `status-indicator ${status}`;
+            
+            switch(status) {
+                case 'connected':
+                    statusElement.innerHTML = '<i class="fas fa-circle"></i> 연결됨 ✓';
+                    if (connectBtn) connectBtn.disabled = true;
+                    if (disconnectBtn) disconnectBtn.disabled = false;
+                    if (diagnoseBtn) diagnoseBtn.disabled = false;
+                    isConnected = true;
+                    break;
+                case 'disconnected':
+                    statusElement.innerHTML = '<i class="fas fa-circle"></i> 연결 안됨';
+                    if (connectBtn) connectBtn.disabled = false;
+                    if (disconnectBtn) disconnectBtn.disabled = true;
+                    if (diagnoseBtn) diagnoseBtn.disabled = true;
+                    isConnected = false;
+                    break;
+                case 'connecting':
+                    statusElement.innerHTML = '<i class="fas fa-circle"></i> 연결 중...';
+                    if (connectBtn) connectBtn.disabled = true;
+                    if (disconnectBtn) disconnectBtn.disabled = true;
+                    if (diagnoseBtn) diagnoseBtn.disabled = true;
+                    break;
+            }
+            
+            if (message) {
+                logCommand(message);
+            }
+        }
         async function diagnoseConnection() {
             if (!isConnected) {
                 logCommand('❌ 장치가 연결되지 않음');
